@@ -110,6 +110,6 @@ No remote code, no analytics, no data leaves the browser except requests to amaz
 ## Releasing an update later
 
 1. Bump `"version"` in `extension/manifest.json` (e.g. 1.0.0 → 1.0.1).
-2. Push a tag `xray-v1.0.1`. GitHub Actions builds `adlytics-xray-1.0.1.zip` on the Releases page.
+2. Push to `main`. GitHub Actions sees the new version and publishes `adlytics-xray-1.0.1.zip` on the Releases page (same version again = no new release).
 3. Partner Center → your extension → **Update** → upload the new zip → **Publish**.
 4. After certification (usually 1–3 days for updates), every installed copy updates itself.

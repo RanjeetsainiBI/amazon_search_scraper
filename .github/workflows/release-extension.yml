@@ -1,10 +1,13 @@
-# Builds the store upload package when a tag like xray-v1.0.1 is pushed.
-# The zip appears on the repo's Releases page, ready to upload to Edge Add-ons.
+# Publishes the store upload package whenever extension/manifest.json on main
+# has a version that hasn't been released yet (or when run by hand from the
+# Actions tab). The zip appears on the Releases page, ready for Edge Add-ons.
 name: Release extension
 
 on:
   push:
-    tags: ["xray-v*"]
+    branches: [main]
+    paths: ["extension/**", ".github/workflows/release-extension.yml"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -25,17 +28,20 @@ jobs:
           npm ci --ignore-scripts
           npm test
 
-      - name: Check the tag matches manifest version
+      - name: Read version, skip if already released
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${GITHUB_REF_NAME#xray-v}"
           VER=$(node -p "require('./extension/manifest.json').version")
-          if [ "$TAG" != "$VER" ]; then
-            echo "Tag says $TAG but extension/manifest.json says $VER. Bump the manifest version first." >&2
-            exit 1
-          fi
           echo "VERSION=$VER" >> "$GITHUB_ENV"
+          if gh release view "xray-v$VER" >/dev/null 2>&1; then
+            echo "xray-v$VER is already released; bump the version in extension/manifest.json to publish a new one."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build zip (manifest at the root, no docs)
+        if: steps.ver.outputs.skip != 'true'
         run: |
           cd extension
           zip -r "../adlytics-xray-${VERSION}.zip" . -x "README.md"
@@ -43,9 +49,10 @@ jobs:
           unzip -l "adlytics-xray-${VERSION}.zip"
 
       - name: Publish release
+        if: steps.ver.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "adlytics-xray-${VERSION}.zip" \
+          gh release create "xray-v${VERSION}" "adlytics-xray-${VERSION}.zip" --target "$GITHUB_SHA" \
             --title "AdLytics Xray ${VERSION}" \
             --notes "Upload **adlytics-xray-${VERSION}.zip** to Microsoft Edge Add-ons (Partner Center → Update → Packages). For a manual install: unzip, open edge://extensions, turn on Developer mode, Load unpacked."
