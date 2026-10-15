@@ -1,0 +1,51 @@
+# Builds the store upload package when a tag like xray-v1.0.1 is pushed.
+# The zip appears on the repo's Releases page, ready to upload to Edge Add-ons.
+name: Release extension
+
+on:
+  push:
+    tags: ["xray-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Test parsers
+        run: |
+          npm ci --ignore-scripts
+          npm test
+
+      - name: Check the tag matches manifest version
+        run: |
+          TAG="${GITHUB_REF_NAME#xray-v}"
+          VER=$(node -p "require('./extension/manifest.json').version")
+          if [ "$TAG" != "$VER" ]; then
+            echo "Tag says $TAG but extension/manifest.json says $VER. Bump the manifest version first." >&2
+            exit 1
+          fi
+          echo "VERSION=$VER" >> "$GITHUB_ENV"
+
+      - name: Build zip (manifest at the root, no docs)
+        run: |
+          cd extension
+          zip -r "../adlytics-xray-${VERSION}.zip" . -x "README.md"
+          cd ..
+          unzip -l "adlytics-xray-${VERSION}.zip"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "adlytics-xray-${VERSION}.zip" \
+            --title "AdLytics Xray ${VERSION}" \
+            --notes "Upload **adlytics-xray-${VERSION}.zip** to Microsoft Edge Add-ons (Partner Center → Update → Packages). For a manual install: unzip, open edge://extensions, turn on Developer mode, Load unpacked."

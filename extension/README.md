@@ -15,12 +15,16 @@ On a product page, Quick scan reads that page and Deep scan adds its seller's bu
 
 Deep scan uses **your own amazon.in session**: the same browser, sign-in and connection you shop with. That means far fewer captchas than a server, and nothing goes to any outside service. Results are kept for 3 days, so a second scan of the same products is instant.
 
-## Install (2 minutes, no Web Store needed)
+## Install
 
-1. Download this repo: **Code → Download ZIP** on GitHub, then unzip it. Or use `git clone`.
+**From Microsoft Edge Add-ons** (one click, updates itself): use the store link once the listing is live.
+
+**Manual install** (Chrome, Edge, Brave), about 2 minutes:
+
+1. Download `adlytics-xray-<version>.zip` from [Releases](https://github.com/RanjeetsainiBI/amazon_search_scraper/releases) and unzip it. Or clone the repo and use its `extension` folder.
 2. Open `chrome://extensions` in Chrome (Edge and Brave work too).
 3. Turn on **Developer mode** (top right).
-4. Click **Load unpacked** and choose the **`extension`** folder.
+4. Click **Load unpacked** and choose the unzipped folder.
 5. Pin **AdLytics Xray** from the puzzle-piece menu.
 6. Open any amazon.in search page and click the **Xray** button (bottom right) or the toolbar icon.
 
@@ -36,6 +40,10 @@ To update: replace the folder with the new version and click **↻ Reload** on t
 - **Captcha:** the scan pauses and tells you. Open any amazon.in page in a new tab, solve it, then press Deep scan again. Finished rows come from the saved results, so nothing is fetched twice.
 
 **About time:** a 48-listing page with seller info takes roughly 48 product pages plus one page per unique seller, at about 5 s each: **5–7 minutes** the first time and seconds after that. Leave the tab open while it runs. Other tabs are fine.
+
+## Publishing
+
+The Edge Add-ons listing text, images and certification notes are in [`store/edge-listing.md`](../store/edge-listing.md). The privacy policy is [`PRIVACY.md`](../PRIVACY.md).
 
 ## Notes
 
