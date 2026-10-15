@@ -1,4 +1,4 @@
-# amazon-lead-scraper
+# amazon_search_scraper
 
 Turns **amazon.in search results** into a **seller lead list (CSV)**. You give it keywords. For every product it finds the third-party seller, then reads:
 
@@ -15,8 +15,8 @@ It runs on your own laptop: Amazon blocks cloud and datacenter IPs, but a home o
 You need [Node.js 20+](https://nodejs.org).
 
 ```bash
-git clone https://github.com/RanjeetsainiBI/amazon-lead-scraper.git
-cd amazon-lead-scraper
+git clone https://github.com/RanjeetsainiBI/amazon_search_scraper.git
+cd amazon_search_scraper
 npm run setup        # installs packages + the Chromium browser
 ```
 

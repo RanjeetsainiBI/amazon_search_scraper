@@ -8,7 +8,7 @@ import { isNotFound, parseProduct, parseSearch, parseSeller } from "./parse.ts";
 import { loadState, saveState, type RunState } from "./state.ts";
 
 const HELP = `
-amazon-lead-scraper: amazon.in search results -> seller lead list (CSV)
+amazon_search_scraper: amazon.in search results -> seller lead list (CSV)
 
 Usage:
   npm run scrape -- --keywords "yoga mat, resistance band" [options]

@@ -1,5 +1,5 @@
 {
-  "name": "amazon-lead-scraper",
+  "name": "amazon-search-scraper",
   "version": "0.1.0",
   "description": "Turns amazon.in search results into a seller lead list (CSV): seller business name and address, brand, manufacturer, packer and importer details.",
   "license": "MIT",
