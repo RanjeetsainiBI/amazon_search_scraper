@@ -1,0 +1,8 @@
+node_modules/
+# Scraped data and run state stay on your laptop. Never commit them.
+output/
+*.csv
+!test/fixtures/*.csv
+.env
+.env.*
+.DS_Store

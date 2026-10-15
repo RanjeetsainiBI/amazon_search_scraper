@@ -1,0 +1,4 @@
+# One amazon.in search per line. Lines starting with # are ignored.
+yoga mat
+resistance band
+protein shaker bottle
