@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "AdLytics Xray for Amazon.in",
+  "short_name": "AdLytics Xray",
+  "version": "0.1.0",
+  "description": "Scan amazon.in search results, seller storefronts and product pages: organic and sponsored rank, Buy Box, seller, BSR, manufacturer and seller business details. Export CSV.",
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "action": { "default_title": "AdLytics Xray", "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png" } },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["https://www.amazon.in/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.amazon.in/*"],
+      "js": ["parse.js", "scan.js", "panel.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

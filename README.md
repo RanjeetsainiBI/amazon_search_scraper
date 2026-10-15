@@ -1,5 +1,14 @@
 # amazon_search_scraper
 
+Two ways to collect amazon.in data:
+
+- **[Chrome extension: AdLytics Xray](extension/README.md)**: click-to-scan panel on search results, seller storefronts and product pages. You get organic and SP rank, Buy Box, seller, BSR, manufacturer, business name and address, and a CSV export. **Start here.**
+- **Command-line scraper** (below): unattended keyword runs that produce a seller lead list.
+
+---
+
+## Command-line scraper
+
 Turns **amazon.in search results** into a **seller lead list (CSV)**. You give it keywords. For every product it finds the third-party seller, then reads:
 
 - the seller's **business name and registered address** from "Detailed Seller Information" on their seller profile
@@ -94,7 +103,7 @@ All the page parsing is in [`src/parse.ts`](src/parse.ts), and every parser fall
 ## Development
 
 ```bash
-npm test            # parser + lead roll-up tests against fixtures (offline)
+npm test            # CLI + extension parser tests against fixtures (offline, jsdom)
 npm run typecheck
 
 # End-to-end run against a local fake amazon.in (no internet needed)
