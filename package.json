@@ -1,11 +1,14 @@
 {
   "name": "amazon-search-scraper",
   "version": "0.1.0",
-  "description": "Turns amazon.in search results into a seller lead list (CSV): seller business name and address, brand, manufacturer, packer and importer details.",
+  "description": "amazon.in search results to a seller lead list, with a web interface you run on your own laptop.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20.11"
+  },
   "scripts": {
+    "start": "tsx src/server.ts",
     "scrape": "tsx src/cli.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "test:mock-server": "node test/mock-server.mjs",

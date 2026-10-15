@@ -8,6 +8,10 @@ export interface BrowserOpts {
   channel?: string;
   minDelayMs: number;
   maxDelayMs: number;
+  /** Told when a captcha is waiting to be solved in the visible window (true) and when it clears (false). */
+  onCaptcha?: (waiting: boolean) => void;
+  /** Lets a stop request end the captcha wait early. */
+  shouldStop?: () => boolean;
 }
 
 export class CaptchaError extends Error {
@@ -72,16 +76,21 @@ export class PoliteBrowser {
   private async waitForHuman(): Promise<string> {
     if (!this.opts.headful) throw new CaptchaError();
     console.log("\n⚠  Captcha in the browser window. Solve it there; the run continues by itself (waiting up to 5 min).");
-    const until = Date.now() + 5 * 60_000;
-    while (Date.now() < until) {
-      await sleep(3000);
-      const html = await this.page.content().catch(() => "");
-      if (html && !isBlocked(html)) {
-        console.log("✓  Captcha cleared, continuing.\n");
-        await this.page.waitForTimeout(2000);
-        return this.page.content();
+    this.opts.onCaptcha?.(true);
+    try {
+      const until = Date.now() + 5 * 60_000;
+      while (Date.now() < until && !this.opts.shouldStop?.()) {
+        await sleep(3000);
+        const html = await this.page.content().catch(() => "");
+        if (html && !isBlocked(html)) {
+          console.log("✓  Captcha cleared, continuing.\n");
+          await this.page.waitForTimeout(2000);
+          return this.page.content();
+        }
       }
+      throw new CaptchaError();
+    } finally {
+      this.opts.onCaptcha?.(false);
     }
-    throw new CaptchaError();
   }
 }

@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amazon Search Scraper</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23e47911'/><path d='M9 21c4 3 10 3 14 0' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round'/><circle cx='12' cy='12' r='2.5' fill='white'/><circle cx='20' cy='12' r='2.5' fill='white'/></svg>">
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --text: #16191f; --muted: #5f6b7a; --line: #e3e6ea;
+  --accent: #e47911; --accent-ink: #ffffff; --accent-soft: #fdf1e5;
+  --ok: #1a7f4b; --ok-soft: #e5f5ec; --warn: #9a5b00; --warn-soft: #fff4dc;
+  --bad: #b42318; --bad-soft: #fdecea; --info: #175cd3; --info-soft: #e8f0fe;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216; --panel: #171b21; --text: #e8eaed; --muted: #9aa4b2; --line: #2a3038;
+    --accent: #f08c2e; --accent-ink: #1a1007; --accent-soft: #2e1f10;
+    --ok: #4ccf8a; --ok-soft: #12291d; --warn: #f2b84b; --warn-soft: #2d230f;
+    --bad: #f97066; --bad-soft: #2f1513; --info: #84adff; --info-soft: #142038;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 17px; margin: 0; display: flex; align-items: center; gap: 10px; }
+header h1 small { font-weight: 500; color: var(--muted); font-size: 13px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.live { background: var(--ok); }
+main { display: grid; grid-template-columns: 360px 1fr; gap: 20px; padding: 20px 24px; max-width: 1500px; margin: 0 auto; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 12px 16px; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+.card h2 { font-size: 15px; margin: 0 0 14px; }
+label { display: block; font-weight: 600; font-size: 13px; margin: 12px 0 5px; }
+label .hint { font-weight: 400; color: var(--muted); }
+input[type=text], input[type=number], textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+textarea { min-height: 110px; resize: vertical; }
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 10px 0 0; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+details { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
+button, .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+button:hover, .btn:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); width: 100%; justify-content: center; padding: 10px; font-size: 14px; margin-top: 16px; }
+button.danger { color: var(--bad); }
+button:disabled { opacity: .5; cursor: default; }
+.error { color: var(--bad); font-size: 13px; margin-top: 8px; min-height: 1em; }
+.note { color: var(--muted); font-size: 12.5px; margin: 12px 0 0; }
+.jobs { display: flex; flex-direction: column; gap: 10px; }
+.job { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; cursor: pointer; }
+.job.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.job-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.job-name { font-weight: 650; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pill { font-size: 12px; font-weight: 650; padding: 2px 9px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+.pill.running { background: var(--info-soft); color: var(--info); }
+.pill.finished { background: var(--ok-soft); color: var(--ok); }
+.pill.captcha, .pill.queued { background: var(--warn-soft); color: var(--warn); }
+.pill.error { background: var(--bad-soft); color: var(--bad); }
+.stats { display: flex; gap: 22px; margin: 10px 0 4px; flex-wrap: wrap; }
+.stat b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 12px; }
+.meta { color: var(--muted); font-size: 12.5px; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.banner { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 9px 12px; font-weight: 600; font-size: 13px; margin-top: 10px; }
+.empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+.detail { margin-top: 16px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.tab { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 8px 12px; color: var(--muted); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.log { font-family: var(--mono); font-size: 12px; background: var(--bg); border-radius: 8px; padding: 10px 12px; height: 340px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.table-wrap { overflow: auto; max-height: 520px; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { position: sticky; top: 0; background: var(--panel); font-weight: 650; white-space: nowrap; }
+td { max-width: 280px; }
+td a { color: var(--info); }
+.search { margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Amazon Search Scraper <small>amazon.in → seller leads</small> <span class="dot" id="live" title="Live updates"></span></h1>
+  <a class="btn" href="/api/leads.csv" title="Every seller from every run, de-duplicated">⬇ All leads (CSV)</a>
+</header>
+<main>
+  <section>
+    <form class="card" id="form">
+      <h2>New search</h2>
+      <label for="keywords">Keywords <span class="hint">one per line</span></label>
+      <textarea id="keywords" name="keywords" placeholder="yoga mat&#10;resistance band&#10;protein shaker" required></textarea>
+      <div class="row">
+        <div>
+          <label for="pages">Pages per keyword</label>
+          <select id="pages" name="pages">
+            <option value="1">1 (~20 products)</option><option value="2">2</option><option value="3" selected>3 (~60)</option>
+            <option value="5">5 (~100)</option><option value="7">7</option><option value="10">10 (~200)</option>
+          </select>
+        </div>
+        <div>
+          <label for="name">Run name <span class="hint">optional</span></label>
+          <input type="text" id="name" name="name" placeholder="e.g. Fitness Oct">
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" name="sponsoredOnly"> Only Sponsored products <span class="hint">(sellers already running ads)</span></label>
+
+      <details>
+        <summary>Filters</summary>
+        <div class="row">
+          <div><label>Min reviews</label><input type="number" name="minReviews" min="0" placeholder="any"></div>
+          <div><label>Max reviews</label><input type="number" name="maxReviews" min="0" placeholder="any"></div>
+          <div><label>Min price ₹</label><input type="number" name="minPrice" min="0" placeholder="any"></div>
+          <div><label>Max price ₹</label><input type="number" name="maxPrice" min="0" placeholder="any"></div>
+          <div><label>Max rating</label><input type="number" name="maxRating" min="1" max="5" step="0.1" placeholder="any"></div>
+          <div><label>Stop after products</label><input type="number" name="maxProducts" min="1" placeholder="no limit"></div>
+        </div>
+        <label class="check"><input type="checkbox" name="includeAmazon"> Include Amazon / Cloudtail / Appario</label>
+      </details>
+
+      <details>
+        <summary>Browser</summary>
+        <label class="check"><input type="checkbox" name="headful" checked> Show browser on the laptop <span class="hint">(lets you solve captchas)</span></label>
+        <label class="check"><input type="checkbox" name="chrome"> Use installed Google Chrome</label>
+        <div class="row">
+          <div><label>Min seconds between pages</label><input type="number" name="minDelaySec" min="1" value="4"></div>
+          <div><label>Max seconds</label><input type="number" name="maxDelaySec" min="1" value="9"></div>
+        </div>
+      </details>
+
+      <button class="primary" type="submit" id="start">Start scraping</button>
+      <div class="error" id="formError"></div>
+      <p class="note">Runs go one at a time. New ones wait in the queue. Progress is saved after every page, so a stopped run resumes where it left off.</p>
+    </form>
+  </section>
+
+  <section>
+    <div class="jobs" id="jobs"></div>
+    <div class="card detail" id="detail" hidden>
+      <div class="tabs">
+        <button class="tab active" data-tab="leads">Leads</button>
+        <button class="tab" data-tab="log">Live log</button>
+      </div>
+      <div data-pane="leads">
+        <input type="text" class="search" id="leadSearch" placeholder="Filter leads by name, city, brand…">
+        <div class="table-wrap"><table id="leadTable"></table></div>
+        <p class="note" id="leadNote"></p>
+      </div>
+      <div data-pane="log" hidden><div class="log" id="log"></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const fmt = (n) => (n ?? 0).toLocaleString("en-IN");
+let jobs = [];
+let selected = null;
+let leads = { header: [], rows: [], total: 0 };
+let tab = "leads";
+
+const STATUS = { queued: "Queued", running: "Running", finished: "Finished", stopped: "Stopped", captcha: "Captcha: paused", error: "Error" };
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { "content-type": "application/json" }, ...opts });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || res.statusText);
+  return body;
+}
+
+function renderJobs() {
+  const box = $("#jobs");
+  if (!jobs.length) {
+    box.innerHTML = `<div class="card empty">No runs yet. Add keywords on the left and press <b>Start scraping</b>.</div>`;
+    return;
+  }
+  box.innerHTML = jobs.map((j) => {
+    const p = j.progress || {};
+    const active = j.status === "running" || j.status === "queued";
+    const where = j.status === "running" && p.keyword ? ` · now: “${esc(p.keyword)}” page ${p.page}` : j.status === "queued" && j.queuePosition ? ` · #${j.queuePosition} in queue` : "";
+    return `<div class="job ${selected === j.id ? "selected" : ""}" data-id="${j.id}">
+      <div class="job-top">
+        <div class="job-name" title="${esc(j.params.keywords.join(", "))}">${esc(j.name)}</div>
+        <span class="pill ${j.status}">${STATUS[j.status] || j.status}</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>${fmt(p.sellers)}</b><span>sellers</span></div>
+        <div class="stat"><b>${fmt(p.sellersWithAddress)}</b><span>with address</span></div>
+        <div class="stat"><b>${fmt(p.products)}</b><span>products</span></div>
+        <div class="stat"><b>${fmt(p.pagesLoaded)}</b><span>pages this run</span></div>
+      </div>
+      <div class="meta">${j.params.keywords.length} keyword${j.params.keywords.length > 1 ? "s" : ""} · ${j.params.pages} page${j.params.pages > 1 ? "s" : ""} each${j.params.filters.sponsoredOnly ? " · sponsored only" : ""} · started ${new Date(j.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}${where}</div>
+      ${j.captchaWaiting ? `<div class="banner">⚠ Amazon is showing a captcha. Solve it in the browser window on the laptop and the run carries on by itself.</div>` : ""}
+      ${j.status === "captcha" ? `<div class="banner">Paused by a captcha. Progress is saved. Wait 15–30 minutes, then press Resume.</div>` : ""}
+      ${j.error ? `<div class="banner" style="background:var(--bad-soft);color:var(--bad)">${esc(j.error)}</div>` : ""}
+      <div class="actions">
+        ${active ? `<button data-act="stop">■ Stop</button>` : `<button data-act="resume">▶ Resume</button>`}
+        <a class="btn" href="/api/jobs/${j.id}/leads.csv">⬇ Leads CSV</a>
+        <a class="btn" href="/api/jobs/${j.id}/products.csv">⬇ Products CSV</a>
+        ${active ? "" : `<button class="danger" data-act="delete">Delete</button>`}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderLeads() {
+  const q = $("#leadSearch").value.trim().toLowerCase();
+  const cols = ["business_name", "store_name", "city", "state", "brands", "manufacturers", "products_found", "sponsored_products", "total_reviews", "seller_profile_url"];
+  const idx = cols.map((c) => leads.header.indexOf(c));
+  const rows = leads.rows.filter((r) => !q || r.join(" ").toLowerCase().includes(q));
+  const head = ["Business name", "Store", "City", "State", "Brands", "Manufacturer", "Products", "Sponsored", "Reviews", ""];
+  $("#leadTable").innerHTML = `<thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${
+    rows.slice(0, 300).map((r) => `<tr>${idx.map((i, k) => {
+      const v = r[i];
+      if (cols[k] === "seller_profile_url") return `<td><a href="${esc(v)}" target="_blank" rel="noopener">profile ↗</a></td>`;
+      return `<td>${esc(typeof v === "number" ? fmt(v) : v)}</td>`;
+    }).join("")}</tr>`).join("") || `<tr><td colspan="10" class="empty">No leads yet</td></tr>`
+  }</tbody>`;
+  $("#leadNote").textContent = leads.total ? `${fmt(rows.length)} of ${fmt(leads.total)} sellers shown${leads.total > leads.rows.length ? " (preview: download the CSV for all)" : ""}. The CSV has every column, including the full address and PIN code.` : "";
+}
+
+async function loadLeads() {
+  if (!selected) return;
+  leads = await api(`/api/jobs/${selected}/leads`).catch(() => ({ header: [], rows: [], total: 0 }));
+  renderLeads();
+}
+
+async function select(id) {
+  selected = id;
+  renderJobs();
+  $("#detail").hidden = !id;
+  if (!id) return;
+  const j = await api(`/api/jobs/${id}`);
+  $("#log").textContent = j.log.join("\n");
+  $("#log").scrollTop = 1e9;
+  loadLeads();
+}
+
+$("#jobs").addEventListener("click", async (e) => {
+  const card = e.target.closest(".job");
+  if (!card) return;
+  const id = card.dataset.id;
+  const act = e.target.closest("[data-act]")?.dataset.act;
+  if (e.target.closest("a")) return;
+  if (!act) return select(id);
+  try {
+    if (act === "delete") {
+      if (!confirm("Delete this run and its results?")) return;
+      await api(`/api/jobs/${id}`, { method: "DELETE" });
+    } else {
+      await api(`/api/jobs/${id}/${act}`, { method: "POST" });
+    }
+  } catch (err) { alert(err.message); }
+});
+
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === b));
+  document.querySelectorAll("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== tab));
+  if (tab === "log") $("#log").scrollTop = 1e9;
+}));
+$("#leadSearch").addEventListener("input", renderLeads);
+
+$("#form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  const body = {};
+  for (const el of f.elements) {
+    if (!el.name) continue;
+    body[el.name] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  $("#formError").textContent = "";
+  $("#start").disabled = true;
+  try {
+    const j = await api("/api/jobs", { method: "POST", body: JSON.stringify(body) });
+    f.keywords.value = "";
+    f.name.value = "";
+    await refresh();
+    select(j.id);
+  } catch (err) {
+    $("#formError").textContent = err.message;
+  } finally {
+    $("#start").disabled = false;
+  }
+});
+
+async function refresh() {
+  jobs = await api("/api/jobs");
+  renderJobs();
+}
+
+let leadTimer = null;
+function connect() {
+  const es = new EventSource("/api/events");
+  es.onopen = () => { $("#live").classList.add("live"); refresh(); };
+  es.onerror = () => $("#live").classList.remove("live");
+  es.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.type === "job") {
+      const i = jobs.findIndex((j) => j.id === m.job.id);
+      const prev = jobs[i];
+      const job = { ...m.job, running: m.job.status === "running", queuePosition: prev?.queuePosition ?? null };
+      if (i >= 0) jobs[i] = job; else jobs.unshift(job);
+      if (m.job.status !== prev?.status) refresh(); else renderJobs();
+      // Refresh the table at most every 3 s while a run adds sellers.
+      if (m.job.id === selected && !leadTimer) leadTimer = setTimeout(() => { leadTimer = null; loadLeads(); }, 3000);
+    } else if (m.type === "log" && m.id === selected) {
+      const log = $("#log");
+      const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+      log.textContent += (log.textContent ? "\n" : "") + m.line;
+      if (atBottom) log.scrollTop = 1e9;
+    } else if (m.type === "deleted") {
+      jobs = jobs.filter((j) => j.id !== m.id);
+      if (selected === m.id) select(null);
+      renderJobs();
+    }
+  };
+}
+connect();
+refresh().then(() => { if (jobs[0]) select(jobs[0].id); });
+</script>
+</body>
+</html>
