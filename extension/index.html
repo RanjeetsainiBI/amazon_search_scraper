@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Index Checker · AdLytics Xray</title>
+<link rel="icon" href="icons/icon48.png">
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #fff; --text: #16191f; --muted: #5f6b7a; --line: #e3e6ea;
+  --ink: #131921; --accent: #e47911; --accent-soft: #fdf1e5;
+  --ok: #1a7f4b; --ok-soft: #e5f5ec; --bad: #b42318; --bad-soft: #fdecea; --warn: #9a5b00; --warn-soft: #fff4dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1216; --panel: #171b21; --text: #e8eaed; --muted: #9aa4b2; --line: #2a3038; --ink: #0b0e12;
+    --accent: #f08c2e; --accent-soft: #2e1f10; --ok: #4ccf8a; --ok-soft: #12291d; --bad: #f97066; --bad-soft: #2f1513; --warn: #f2b84b; --warn-soft: #2d230f; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { background: var(--ink); color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+header img { width: 26px; height: 26px; }
+header h1 { margin: 0; font-size: 16px; }
+header span { color: #aab3bf; font-size: 13px; }
+main { display: grid; grid-template-columns: 360px 1fr; gap: 20px; padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+main > section { min-width: 0; }
+@media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 12px 16px; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+h2 { font-size: 14px; margin: 0 0 4px; }
+label { display: flex; justify-content: space-between; font-weight: 650; font-size: 13px; margin: 14px 0 5px; }
+label small { font-weight: 500; color: var(--muted); }
+textarea, select, input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+textarea { resize: vertical; font-size: 13px; }
+#asins { min-height: 70px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+#keywords { min-height: 220px; }
+textarea:focus, select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+button { font: inherit; font-weight: 650; font-size: 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 7px 12px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; width: 100%; padding: 10px; font-size: 14px; margin-top: 14px; }
+.link { background: none; border: 0; color: var(--accent); padding: 0; font-weight: 650; }
+.hint { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
+.est { background: var(--bg); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); margin-top: 12px; }
+.err { color: var(--bad); font-size: 13px; margin-top: 8px; min-height: 1em; }
+.top { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.sum { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; min-width: 190px; }
+.tile a, th a { color: inherit; text-decoration: none; }
+.tile a:hover, th a:hover { text-decoration: underline; }
+.tile .asin { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; color: var(--muted); }
+.tile b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.tile .bar { height: 5px; background: var(--bad-soft); border-radius: 3px; margin: 6px 0 4px; overflow: hidden; }
+.tile .bar i { display: block; height: 100%; background: var(--ok); }
+.tile small { color: var(--muted); font-size: 12px; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button.on { background: var(--ink); color: #fff; }
+.status { margin-left: auto; color: var(--muted); font-size: 13px; }
+.status.warn { color: var(--warn); font-weight: 650; }
+.prog { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
+.prog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.tbl { overflow: auto; max-height: calc(100vh - 280px); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
+th, td { padding: 8px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { position: sticky; top: 0; background: var(--bg); font-weight: 650; white-space: nowrap; z-index: 1; }
+th.asin { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+th a, td a { color: inherit; }
+td.kw { font-weight: 550; min-width: 200px; }
+.badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.yes { background: var(--ok-soft); color: var(--ok); }
+.no { background: var(--bad-soft); color: var(--bad); }
+.wait { background: var(--bg); color: var(--muted); }
+.rank { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.rank b { color: var(--text); }
+.empty { padding: 50px 20px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <img src="icons/icon48.png" alt="">
+  <h1>Index Checker</h1>
+  <span>AdLytics Xray · amazon.in</span>
+</header>
+<main>
+  <section class="card">
+    <h2>What to check</h2>
+    <label for="asins">ASINs <small id="asinCount">one per line, or product links (up to 10)</small></label>
+    <textarea id="asins" placeholder="B0XXXXXXXX&#10;https://www.amazon.in/dp/B0YYYYYYYY"></textarea>
+
+    <label for="keywords">Keywords <small id="kwCount">one per line (up to 200)</small></label>
+    <textarea id="keywords" placeholder="yoga mat&#10;yoga mat for women&#10;anti slip exercise mat"></textarea>
+    <div class="top" style="margin-top:6px">
+      <button class="link" id="suggest" title="Read the first ASIN's title, bullets and brand and add keyword ideas">＋ Suggest from listing</button>
+      <button class="link" id="clearKw" style="color:var(--muted)">Clear</button>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="pages">Rank check</label>
+        <select id="pages">
+          <option value="0">Off (indexed only)</option>
+          <option value="1">Page 1</option>
+          <option value="2">Pages 1–2</option>
+          <option value="3" selected>Pages 1–3</option>
+          <option value="5">Pages 1–5</option>
+        </select>
+      </div>
+      <div>
+        <label for="minDelay">Seconds per search</label>
+        <div class="row" style="gap:6px"><input type="number" id="minDelay" min="1" step="0.5" title="Minimum"><input type="number" id="maxDelay" min="1" step="0.5" title="Maximum"></div>
+      </div>
+    </div>
+    <div class="est" id="est">Add ASINs and keywords to see how long it will take.</div>
+    <button class="primary" id="start">Check index</button>
+    <div class="top" style="margin-top:8px">
+      <button id="stop" hidden>■ Stop</button>
+      <button id="resume" hidden>▶ Resume</button>
+    </div>
+    <div class="err" id="err"></div>
+    <p class="hint"><b>Indexed</b> means amazon.in returns the ASIN when you search the keyword together with the ASIN, so the keyword can bring traffic. <b>Not indexed</b> means it can't, and ads on that keyword struggle to serve. Add it to the title, bullets or backend search terms.</p>
+    <p class="hint">Searches run in your browser with your amazon.in session, at a human pace. Keep this tab open while it runs.</p>
+  </section>
+
+  <section>
+    <div class="sum" id="sum"></div>
+    <div class="tools">
+      <div class="seg" id="show"><button data-v="all" class="on">All</button><button data-v="no">Not indexed</button><button data-v="yes">Indexed</button></div>
+      <button id="copyNo" disabled title="Copy the keywords not indexed for any ASIN">⧉ Copy not-indexed</button>
+      <button id="csv" disabled>⬇ CSV</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="prog"><i id="bar"></i></div>
+    <div class="tbl" id="tbl"><div class="empty">Results show here as each keyword is checked.</div></div>
+  </section>
+</main>
+<script src="parse.js"></script>
+<script src="scan.js"></script>
+<script src="index-check.js"></script>
+<script src="index-page.js"></script>
+</body>
+</html>

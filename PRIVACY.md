@@ -1,6 +1,6 @@
 # Privacy Policy: AdLytics Xray
 
-_Last updated: 15 October 2026_
+_Last updated: 16 October 2026_
 
 AdLytics Xray ("the extension") is a browser extension that helps you research product listings and sellers on amazon.in. This policy explains what the extension does with data.
 
@@ -12,7 +12,8 @@ AdLytics Xray ("the extension") is a browser extension that helps you research p
 
 When you click **Quick scan** or **Deep scan** on an amazon.in page, the extension reads publicly visible information from:
 
-- the amazon.in page you are on (search results, a seller storefront or a product page), and
+- the amazon.in page you are on (search results, a seller storefront or a product page),
+- for the Index Checker, the amazon.in search results for the keywords and ASINs you enter (and, for keyword ideas, that ASIN's product page), and
 - for a deep scan, the public product pages and seller profile pages of the listings shown. These are fetched from amazon.in in your own browser.
 
 This includes product titles, prices, ratings, review counts, rankings, the Buy Box seller, product details (such as manufacturer, packer and importer), and the business name and address that sellers publish on their amazon.in seller profile.
@@ -22,6 +23,7 @@ The extension does **not** read your Amazon account details, orders, addresses, 
 ## Where data is stored
 
 - **Scan results** are cached in your browser's local extension storage (`chrome.storage.local`) for up to 3 days so repeat scans are faster. You can delete them at any time with **⚙ Settings → Clear saved results**, or by removing the extension.
+- **Index Checker** keeps the ASINs, keywords and results of your last check in local extension storage so they're still there after a reload. Starting a new check or removing the extension deletes them.
 - **Your settings** (pages to scan, pace, the "Seller info" toggle) are saved in browser extension storage (`chrome.storage.sync`). If browser sync is on, your browser may sync these settings between your own devices.
 - **CSV exports** are saved to your computer only when you click **CSV**.
 

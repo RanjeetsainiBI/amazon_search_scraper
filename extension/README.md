@@ -15,6 +15,19 @@ On a product page, Quick scan reads that page and Deep scan adds its seller's bu
 
 Deep scan uses **your own amazon.in session**: the same browser, sign-in and connection you shop with. That means far fewer captchas than a server, and nothing goes to any outside service. Results are kept for 3 days, so a second scan of the same products is instant.
 
+## 🔑 Index Checker
+
+Find out which keywords Amazon has **indexed** for your ASINs, meaning the keyword can bring the product up in search, and where each one ranks.
+
+- **Open it:** the **🔑 Index Checker** button in the Xray panel (on a product page the ASIN fills in automatically), or click the toolbar icon on any non-Amazon tab.
+- **Input:** up to 10 ASINs (or product links) and up to 200 keywords. **＋ Suggest from listing** reads the first ASIN's title, bullets and brand and adds keyword ideas.
+- **How it checks:** it searches amazon.in for `keyword + ASIN`. If the ASIN comes back, it's **indexed**. For indexed keywords it then searches the plain keyword (pages 1–3, adjustable) and records the **organic rank** and **sponsored rank**. Ranking organically also counts as indexed.
+- **Output:** a keyword × ASIN grid, an indexed % per ASIN, an "on page 1" count, a **Not indexed** filter, **⧉ Copy not-indexed** (paste straight into backend search terms) and a CSV export.
+- **Stop / Resume:** finished checks are saved, so a captcha or a closed tab costs nothing. Resume picks up where it stopped.
+- **Time:** about 5 s per search. 50 keywords × 1 ASIN with a 3-page rank check takes about 4–15 minutes, depending on how many keywords are indexed.
+
+Use it to check a new listing went live with its keywords, to see whether a keyword you advertise on can serve organically, and to find indexing gaps across a set of variations or competitors.
+
 ## Install
 
 **From Microsoft Edge Add-ons** (one click, updates itself): use the store link once the listing is live.

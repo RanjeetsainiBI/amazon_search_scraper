@@ -156,5 +156,5 @@
     return [row];
   }
 
-  root.AxScan = { quickScan, deepScan, productScan, clearCache, pageUrl, rankAcrossPages, CaptchaError, StopError };
+  root.AxScan = { quickScan, deepScan, productScan, clearCache, pageUrl, rankAcrossPages, makeFetcher, CaptchaError, StopError };
 })(typeof window !== "undefined" ? window : globalThis);

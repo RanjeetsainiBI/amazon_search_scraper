@@ -5,7 +5,7 @@ import { JSDOM } from "jsdom";
 
 // Loads the extension's classic scripts into a jsdom window, the way Chrome loads content scripts.
 const win = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://www.amazon.in/s?k=yoga+mat", runScripts: "outside-only" }).window;
-for (const f of ["parse.js", "scan.js"]) win.eval(readFileSync(new URL(`../extension/${f}`, import.meta.url), "utf8"));
+for (const f of ["parse.js", "scan.js", "index-check.js"]) win.eval(readFileSync(new URL(`../extension/${f}`, import.meta.url), "utf8"));
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const P = (win as any).AxParse;
 // Objects made inside jsdom live in another realm; copy them before deep-equal checks.
@@ -117,4 +117,100 @@ test("page kinds, captcha, helpers", () => {
   assert.deepEqual(plain(P.parseBsr("#3 in Home & Kitchen (See Top 100 in Home & Kitchen) #1 in Mats")), { bsr: 3, bsrCategory: "Home & Kitchen", subRanks: "#1 in Mats" });
   assert.equal(S.pageUrl("https://www.amazon.in/s?k=mat&page=2&ref=sr_pg_2", 3), "https://www.amazon.in/s?k=mat&page=3");
   assert.equal(S.pageUrl("https://www.amazon.in/s?k=mat&page=2", 1), "https://www.amazon.in/s?k=mat");
+});
+
+// ---------------------------------------------------------------- Index Checker
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const I = (win as any).AxIndex;
+
+/** A search page whose results are the given cards ("S:" prefix = sponsored). */
+const searchDoc = (cards: string[], hasNext = false) =>
+  new win.DOMParser().parseFromString(
+    `<html><body>${cards
+      .map((c) => {
+        const sp = c.startsWith("S:");
+        const asin = sp ? c.slice(2) : c;
+        return `<div data-component-type="s-search-result" data-asin="${asin}" class="${sp ? "AdHolder" : ""}"><h2><span>${asin}</span></h2></div>`;
+      })
+      .join("")}${hasNext ? '<a class="s-pagination-next">Next</a>' : ""}</body></html>`,
+    "text/html",
+  );
+
+test("index: ASIN and keyword input parsing", () => {
+  assert.deepEqual(plain(I.parseAsins("b0abcdefgh\nhttps://www.amazon.in/Mat/dp/B0ZZZZZZZ1/ref=sr_1 , B0ABCDEFGH junk 123")), ["B0ABCDEFGH", "B0ZZZZZZZ1"]);
+  assert.deepEqual(plain(I.parseKeywords(" Yoga Mat \n\nyoga  mat\nanti slip mat, gym mat")), ["yoga mat", "anti slip mat", "gym mat"]);
+});
+
+test("index: keyword ideas from a listing", () => {
+  const ideas: string[] = plain(I.suggestKeywords(I.listingText(doc("ext-product.html"), "B0SP000001"), 40));
+  assert.equal(ideas[0], "boldfit", "brand first");
+  assert.ok(ideas.includes("yoga mat 6mm") || ideas.includes("yoga mat"), "title phrases included");
+  assert.ok(ideas.every((k) => !/^(the|for|with|and)\b|\b(the|for|with|and)$/.test(k)), "no phrases starting/ending with filler words");
+  assert.ok(ideas.length <= 40);
+});
+
+test("index: indexed check and ranks across pages", () => {
+  assert.equal(I.indexedIn(searchDoc(["B0X", "B0TARGET01"]), "B0TARGET01"), true);
+  assert.equal(I.indexedIn(searchDoc(["B0X"]), "B0TARGET01"), false);
+  const p1 = P.parseSearch(searchDoc(["S:B0SPONS001", "B0OTHER001", "B0OTHER002"]), 1).rows;
+  const p2 = P.parseSearch(searchDoc(["S:B0TARGET01", "B0OTHER003", "B0TARGET01"]), 2).rows;
+  const r = plain(I.ranksFrom([{ page: 1, rows: p1 }, { page: 2, rows: p2 }], ["B0TARGET01", "B0SPONS001", "B0MISSING1"]));
+  assert.deepEqual(r.B0TARGET01, { organicRank: 4, organicPage: 2, sponsoredRank: 2, sponsoredPage: 2 });
+  assert.deepEqual(r.B0SPONS001, { organicRank: null, organicPage: null, sponsoredRank: 1, sponsoredPage: 1 });
+  assert.equal(r.B0MISSING1, undefined);
+});
+
+test("index: full run, stop part-way, resume skips finished cells", async () => {
+  const A = "B0TARGET01";
+  const B = "B0TARGET02";
+  const calls: string[] = [];
+  // "mat": both indexed, A organic #2 on p1, B sponsored #1 on p2. "rug": neither indexed.
+  const fetchDoc = async (url: string) => {
+    calls.push(url);
+    const k = decodeURIComponent(new URL(url).searchParams.get("k")!);
+    const page = Number(new URL(url).searchParams.get("page") || 1);
+    if (k === `mat ${A}`) return searchDoc([A]);
+    if (k === `mat ${B}`) return searchDoc(["B0X", B]);
+    if (k.startsWith("rug ")) return searchDoc(["B0X"]);
+    if (k === "mat") return page === 1 ? searchDoc(["B0X", A], true) : searchDoc([`S:${B}`]);
+    throw new Error("unexpected " + url);
+  };
+  // First run stops after 2 searches; its finished cells stay in `prior`.
+  const prior: Record<string, unknown> = {};
+  const opts = { keywords: ["mat", "rug"], asins: [A, B], pages: 3, fetchDoc, prior };
+  await assert.rejects(I.run({ ...opts, shouldStop: () => calls.length >= 2 }), (e: { stopped?: boolean }) => !!e.stopped);
+  assert.equal(calls.length, 2);
+  calls.length = 0;
+  const progress: number[] = [];
+  const done = plain(await I.run({ ...opts, shouldStop: () => false, onProgress: (d: number, t: number) => progress.push(t - d) }));
+  assert.equal(calls.filter((u) => u.includes(encodeURIComponent(`mat ${A}`))).length, 0, "finished cells are not fetched again");
+  assert.deepEqual(done.mat[A], { indexed: true, ranked: true, organicRank: 2, organicPage: 1, sponsoredRank: null, sponsoredPage: null });
+  assert.deepEqual(done.mat[B], { indexed: true, ranked: true, organicRank: null, organicPage: null, sponsoredRank: 1, sponsoredPage: 2 });
+  assert.equal(done.rug[A].indexed, false);
+  assert.equal(done.rug[A].ranked, undefined, "no rank search for keywords nobody is indexed for");
+  assert.equal(calls.filter((u) => /k=rug(&|$)/.test(u)).length, 0);
+  assert.equal(progress[progress.length - 1], 0, "progress ends at 100%");
+});
+
+test("index: ranking organically overrides a negative ASIN search", async () => {
+  const fetchDoc = async (url: string) => {
+    const k = new URL(url).searchParams.get("k")!;
+    if (k.includes("B0TARGET0")) return searchDoc([k.endsWith("1") ? "B0TARGET01" : "B0X"]);
+    return searchDoc(["B0TARGET02", "B0TARGET01"]);
+  };
+  const r = plain(await I.run({ keywords: ["mat"], asins: ["B0TARGET01", "B0TARGET02"], pages: 1, fetchDoc }));
+  assert.equal(r.mat.B0TARGET02.indexed, true);
+  assert.equal(r.mat.B0TARGET02.indexedByRank, true);
+  assert.equal(r.mat.B0TARGET02.organicRank, 1);
+  assert.equal(r.mat.B0TARGET01.indexedByRank, undefined);
+});
+
+test("index: rank check off makes only index searches", async () => {
+  const calls: string[] = [];
+  const fetchDoc = async (url: string) => (calls.push(url), searchDoc(["B0TARGET01"]));
+  const r = plain(await I.run({ keywords: ["a", "b"], asins: ["B0TARGET01"], pages: 0, fetchDoc }));
+  assert.equal(calls.length, 2);
+  assert.equal(r.a.B0TARGET01.indexed, true);
+  assert.equal(r.a.B0TARGET01.ranked, undefined);
 });

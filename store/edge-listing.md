@@ -44,6 +44,12 @@ AdLytics Xray turns any amazon.in search results page, seller storefront or prod
 • Image count, A+ content, video, bullet count, date first available
 • Seller account name, registered business name and business address (city, state, PIN code), seller rating
 
+🔑 INDEX CHECKER
+• Check up to 200 keywords against up to 10 ASINs: indexed or not, plus organic and sponsored rank on pages 1–5
+• Keyword ideas from the listing's title, bullets and brand in one click
+• Copy not-indexed keywords for your backend search terms, or export to CSV
+• Stop and resume any time; finished checks are kept
+
 📊 BUILT FOR RESEARCH
 • Summary strip: listings, organic vs sponsored, average price and rating, total reviews, brands, sellers, % FBA
 • Sort by any column, filter by text, switch between All / Organic / Sponsored
@@ -100,6 +106,7 @@ To test:
 4. Click "Deep scan": the extension fetches each product page and seller profile from amazon.in at 3–7 s per page and adds Buy Box, BSR, manufacturer and seller business details. A full page takes a few minutes; press Stop at any time.
 5. Click "CSV" to export.
 It also works on product pages (amazon.in/dp/...) and seller storefronts (amazon.in/s?me=...).
+Index Checker: click the "Index Checker" button in the panel (or the toolbar icon on any non-Amazon tab). Paste an ASIN such as one from the search page and a few keywords, then press "Check index".
 
 Permissions: host access to www.amazon.in only (reading the scanned pages and fetching product/seller pages); storage (settings and a 3-day local cache); scripting (to open the panel on amazon.in tabs that were already open at install time).
 No remote code, no analytics, no data leaves the browser except requests to amazon.in.

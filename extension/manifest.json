@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AdLytics Xray - Seller Research for Amazon.in",
   "short_name": "AdLytics Xray",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Scan amazon.in search pages, storefronts and products: organic & sponsored rank, Buy Box, BSR, manufacturer, seller details. CSV.",
   "homepage_url": "https://github.com/RanjeetsainiBI/amazon_search_scraper",
   "icons": {
