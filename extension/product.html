@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Track · AdLytics Xray</title>
+<link rel="icon" href="icons/icon48.png">
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #fff; --text: #16191f; --muted: #5f6b7a; --line: #e3e6ea;
+  --ink: #131921; --accent: #e47911;
+  --ok: #1a7f4b; --ok-soft: #e5f5ec; --bad: #b42318; --bad-soft: #fdecea; --warn: #9a5b00; --warn-soft: #fff4dc; --info: #175cd3; --info-soft: #e8f0fe;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1216; --panel: #171b21; --text: #e8eaed; --muted: #9aa4b2; --line: #2a3038; --ink: #0b0e12; --accent: #f08c2e;
+    --ok: #4ccf8a; --ok-soft: #12291d; --bad: #f97066; --bad-soft: #2f1513; --warn: #f2b84b; --warn-soft: #2d230f; --info: #84adff; --info-soft: #142038; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { background: var(--ink); color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+header img { width: 26px; height: 26px; }
+header h1 { margin: 0; font-size: 16px; }
+header span { color: #aab3bf; font-size: 13px; }
+main { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 20px 24px; max-width: 1700px; margin: 0 auto; }
+main > section { min-width: 0; }
+@media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 12px 16px; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+h2 { font-size: 14px; margin: 0 0 4px; }
+label { display: flex; justify-content: space-between; gap: 8px; font-weight: 650; font-size: 13px; margin: 14px 0 5px; }
+label small { font-weight: 500; color: var(--muted); text-align: right; }
+textarea, input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+textarea { resize: vertical; font-size: 13px; }
+#asins { min-height: 200px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+#own { min-height: 60px; }
+textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+button, .filebtn { font: inherit; font-weight: 650; font-size: 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 7px 12px; cursor: pointer; display: inline-block; }
+button:hover, .filebtn:hover { border-color: var(--muted); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; width: 100%; padding: 10px; font-size: 14px; margin-top: 14px; }
+.link { background: none; border: 0; padding: 0; color: var(--muted); font-weight: 600; }
+.filebtn input { display: none; }
+.hint { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
+.est { background: var(--bg); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); margin-top: 12px; }
+.err { color: var(--bad); font-size: 13px; margin-top: 8px; min-height: 1em; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; cursor: pointer; text-align: left; font-weight: 400; }
+.tile b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.tile span { color: var(--muted); font-size: 12px; }
+.tile.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tile.ok b { color: var(--ok); } .tile.bad b { color: var(--bad); } .tile.warn b { color: var(--warn); } .tile.info b { color: var(--info); }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.tools input { width: 240px; max-width: 100%; }
+.status { margin-left: auto; color: var(--muted); font-size: 13px; }
+.status.warn { color: var(--warn); font-weight: 650; }
+.prog { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
+.prog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.tbl { overflow: auto; max-height: calc(100vh - 300px); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12.5px; }
+th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; white-space: nowrap; }
+td.wrap { white-space: normal; min-width: 220px; max-width: 320px; }
+th { position: sticky; top: 0; background: var(--bg); font-weight: 650; z-index: 1; cursor: pointer; user-select: none; }
+td.mono, th.mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+a { color: var(--info); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+.pill.buybox, .pill.you { background: var(--ok-soft); color: var(--ok); }
+.pill.no_buybox, .pill.other { background: var(--bad-soft); color: var(--bad); }
+.pill.unavailable { background: var(--warn-soft); color: var(--warn); }
+.pill.not_found { background: var(--bad-soft); color: var(--bad); }
+.chg { display: block; color: var(--info); font-size: 12px; }
+.chg.status, .chg.seller { color: var(--bad); font-weight: 650; }
+.empty { padding: 50px 20px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <img src="icons/icon48.png" alt="">
+  <h1>Product Track</h1>
+  <span>Buy Box &amp; seller check · AdLytics Xray · amazon.in</span>
+</header>
+<main>
+  <section class="card">
+    <h2>ASINs to check</h2>
+    <label for="asins">ASINs <small id="asinCount">paste ASINs or product links (up to 1,000)</small></label>
+    <textarea id="asins" placeholder="B0XXXXXXXX&#10;B0YYYYYYYY&#10;https://www.amazon.in/dp/B0ZZZZZZZZ"></textarea>
+    <div class="btns">
+      <label class="filebtn" style="margin:0">⬆ Upload CSV / TXT<input type="file" id="file" accept=".csv,.txt,.tsv,text/csv,text/plain"></label>
+      <button class="link" id="clear">Clear</button>
+    </div>
+
+    <label for="own">Your sellers <small>optional: names or seller IDs</small></label>
+    <textarea id="own" placeholder="My Brand Official&#10;A1B2C3D4E5F6G7"></textarea>
+    <p class="hint" style="margin-top:4px">With these set, every ASIN shows whether <b>you</b> or <b>another seller</b> holds the Buy Box.</p>
+
+    <label>Seconds per product <small>min – max</small></label>
+    <div class="row"><input type="number" id="minDelay" min="1" step="0.5"><input type="number" id="maxDelay" min="1" step="0.5"></div>
+    <div class="est" id="est">Paste ASINs to see how long it will take.</div>
+    <button class="primary" id="start">Check Buy Box</button>
+    <div class="btns">
+      <button id="stop" hidden>■ Stop</button>
+      <button id="resume" hidden>▶ Resume</button>
+    </div>
+    <div class="err" id="err"></div>
+    <p class="hint">Each check opens the product page in your browser, with your amazon.in session, at a human pace. Keep this tab open while it runs. Changes are compared with the last time each ASIN was checked.</p>
+  </section>
+
+  <section>
+    <div class="sum" id="sum"></div>
+    <div class="tools">
+      <input type="search" id="filter" placeholder="Filter by ASIN, title, seller…">
+      <button id="csv" disabled>⬇ CSV</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="prog"><i id="bar"></i></div>
+    <div class="tbl" id="tbl"><div class="empty">Results show here as each ASIN is checked.</div></div>
+  </section>
+</main>
+<script src="parse.js"></script>
+<script src="scan.js"></script>
+<script src="index-check.js"></script>
+<script src="product-track.js"></script>
+<script src="product-page.js"></script>
+</body>
+</html>

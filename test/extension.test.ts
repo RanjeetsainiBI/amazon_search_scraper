@@ -5,7 +5,7 @@ import { JSDOM } from "jsdom";
 
 // Loads the extension's classic scripts into a jsdom window, the way Chrome loads content scripts.
 const win = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://www.amazon.in/s?k=yoga+mat", runScripts: "outside-only" }).window;
-for (const f of ["parse.js", "scan.js", "index-check.js"]) win.eval(readFileSync(new URL(`../extension/${f}`, import.meta.url), "utf8"));
+for (const f of ["parse.js", "scan.js", "index-check.js", "product-track.js"]) win.eval(readFileSync(new URL(`../extension/${f}`, import.meta.url), "utf8"));
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const P = (win as any).AxParse;
 // Objects made inside jsdom live in another realm; copy them before deep-equal checks.
@@ -213,4 +213,76 @@ test("index: rank check off makes only index searches", async () => {
   assert.equal(calls.length, 2);
   assert.equal(r.a.B0TARGET01.indexed, true);
   assert.equal(r.a.B0TARGET01.ranked, undefined);
+});
+
+// ---------------------------------------------------------------- Product Track
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const T = (win as any).AxTrack;
+const html = (s: string) => new win.DOMParser().parseFromString(`<html><head><title>x</title></head><body>${s}</body></html>`, "text/html");
+
+const PAGE_BUYBOX = (seller: string, id: string, price: number, offers = 3) => html(`
+  <span id="productTitle">Mat</span><a id="bylineInfo">Brand: Zen</a>
+  <div id="corePriceDisplay_desktop_feature_div"><span class="a-price priceToPay"><span class="a-offscreen">₹${price}</span></span></div>
+  <div id="availability">In stock</div>
+  <div id="tabular-buybox"><div tabular-attribute-name="Ships from"><span class="tabular-buybox-text">Amazon</span></div>
+  <div tabular-attribute-name="Sold by"><span class="tabular-buybox-text"><a id="sellerProfileTriggerId" href="/gp/x?seller=${id}">${seller}</a></span></div></div>
+  <input id="add-to-cart-button"><div id="olpLinkWidget_feature_div">New (${offers}) from ₹${price - 10}</div>`);
+const PAGE_NO_BUYBOX = html(`<span id="productTitle">Mat</span><div id="availability">Available from these sellers.</div>
+  <div id="buybox-see-all-buying-choices"><a>See All Buying Options</a></div><div id="olpLinkWidget_feature_div">New (4) from ₹500</div>`);
+const PAGE_UNAVAILABLE = html(`<span id="productTitle">Mat</span><div id="availability">Currently unavailable. We don't know when or if this item will be back in stock.</div>`);
+const PAGE_GONE = new win.DOMParser().parseFromString("<html><head><title>Page Not Found</title></head><body></body></html>", "text/html");
+
+test("product track: Buy Box states from the product page", () => {
+  const a = plain(T.snapshot(PAGE_BUYBOX("Zen Official", "A1ZENSELLER01", 599), "B0A"));
+  assert.equal(a.status, "buybox");
+  assert.equal(a.buyboxSeller, "Zen Official");
+  assert.equal(a.sellerId, "A1ZENSELLER01");
+  assert.equal(a.fulfillment, "FBA");
+  assert.equal(a.price, 599);
+  assert.equal(a.otherOffers, 3);
+  const b = plain(T.snapshot(PAGE_NO_BUYBOX, "B0B"));
+  assert.equal(b.status, "no_buybox");
+  assert.equal(b.buyboxSeller, null);
+  assert.equal(b.price, null, "no Buy Box price when nobody holds it");
+  assert.equal(b.otherOffers, 4);
+  assert.equal(T.snapshot(PAGE_UNAVAILABLE, "B0C").status, "unavailable");
+  assert.equal(T.snapshot(PAGE_GONE, "B0D").status, "not_found");
+});
+
+test("product track: you vs other seller, by name or seller ID", () => {
+  const snap = plain(T.snapshot(PAGE_BUYBOX("Zen Official", "A1ZENSELLER01", 599), "B0A"));
+  assert.equal(T.owner(snap, []), null, "no own sellers set");
+  assert.equal(T.owner(snap, plain(T.parseOwn("zen  official"))), "you", "name match ignores case and spacing");
+  assert.equal(T.owner(snap, plain(T.parseOwn("a1zenseller01"))), "you", "seller ID match");
+  assert.equal(T.owner(snap, plain(T.parseOwn("Other Co, A9OTHERSELLER"))), "other");
+  assert.equal(T.owner(plain(T.snapshot(PAGE_NO_BUYBOX, "B0B")), ["Zen Official"]), "none");
+});
+
+test("product track: changes since the last check", () => {
+  const before = plain(T.snapshot(PAGE_BUYBOX("Zen Official", "A1ZENSELLER01", 600, 2), "B0A"));
+  const lost = plain(T.snapshot(PAGE_BUYBOX("Cheap Deals", "A9CHEAPDEALS1", 540, 5), "B0A"));
+  const texts = (c: { text: string }[]) => plain(c).map((x) => x.text);
+  assert.deepEqual(texts(T.changes(before, lost)), ["Buy Box: Zen Official → Cheap Deals", "Price ₹600 → ₹540 (-10%)", "Offers 2 → 5"]);
+  assert.deepEqual(texts(T.changes(before, plain(T.snapshot(PAGE_NO_BUYBOX, "B0A")))), ["Has Buy Box → No Buy Box", "Offers 2 → 4"]);
+  assert.deepEqual(texts(T.changes(before, before)), []);
+  assert.deepEqual(texts(T.changes(undefined, before)), [], "first check: nothing to compare");
+});
+
+test("product track: run, stop part-way, resume skips checked ASINs", async () => {
+  const pages: Record<string, Document> = { B0A0000001: PAGE_BUYBOX("Zen Official", "A1ZENSELLER01", 599), B0A0000002: PAGE_NO_BUYBOX, B0A0000003: PAGE_GONE };
+  const calls: string[] = [];
+  const fetchDoc = async (url: string) => {
+    calls.push(url);
+    return pages[url.match(/\/dp\/([A-Z0-9]{10})/)![1]];
+  };
+  const results: Record<string, { status: string }> = {};
+  const asins = Object.keys(pages);
+  await assert.rejects(T.run({ asins, fetchDoc, results, shouldStop: () => calls.length >= 1 }), (e: { stopped?: boolean }) => !!e.stopped);
+  assert.deepEqual(Object.keys(results), ["B0A0000001"]);
+  const progress: [number, number][] = [];
+  await T.run({ asins, fetchDoc, results, onProgress: (d: number, t: number) => progress.push([d, t]) });
+  assert.equal(calls.length, 3, "the first ASIN wasn't fetched again");
+  assert.deepEqual(asins.map((a) => results[a].status), ["buybox", "no_buybox", "not_found"]);
+  assert.deepEqual(plain(progress[progress.length - 1]), [3, 3]);
 });

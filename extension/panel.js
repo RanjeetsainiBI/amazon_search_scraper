@@ -154,7 +154,7 @@
         <button class="go2" id="deep" ${ctx.kind === "other" ? "disabled" : ""}>🔎 Deep scan</button>
         <button id="stop" hidden>■ Stop</button>
         <button id="csv" disabled>⬇ CSV</button>
-        <button id="index" title="Check which keywords this ASIN is indexed for (opens in a new tab)">🔑 Index Checker</button>
+        <button id="index" title="Keyword index check and rank for this ASIN (opens in a new tab)">📈 Rank Track</button>
         <button class="icon" id="gear" title="Settings">⚙</button>
         <button class="icon" id="min" title="Minimise">–</button>
         <button class="icon" id="close" title="Close">×</button>

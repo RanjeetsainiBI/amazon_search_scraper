@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AdLytics Xray</title>
+<style>
+:root { --bg: #fff; --text: #16191f; --muted: #5f6b7a; --line: #e3e6ea; --hover: #f6f7f9; --ink: #131921; --accent: #e47911; }
+@media (prefers-color-scheme: dark) { :root { --bg: #171b21; --text: #e8eaed; --muted: #9aa4b2; --line: #2a3038; --hover: #1f252d; --ink: #0b0e12; --accent: #f08c2e; } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; width: 320px; background: var(--bg); color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; align-items: center; gap: 9px; padding: 12px 14px; background: var(--ink); color: #fff; }
+header img { width: 22px; height: 22px; }
+header b { font-size: 14px; }
+header span { color: #aab3bf; font-size: 12px; margin-left: auto; }
+nav { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+button { all: unset; box-sizing: border-box; display: flex; gap: 12px; align-items: flex-start; width: 100%; padding: 11px 12px; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
+button:hover, button:focus-visible { background: var(--hover); border-color: var(--line); }
+button[disabled] { cursor: default; opacity: .55; }
+button[disabled]:hover { background: none; border-color: transparent; }
+.ico { flex: none; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-size: 17px; background: #fdf1e5; }
+@media (prefers-color-scheme: dark) { .ico { background: #2e1f10; } }
+.t { font-weight: 700; font-size: 14px; }
+.d { color: var(--muted); font-size: 12px; margin-top: 1px; }
+.note { color: var(--accent); font-size: 11.5px; font-weight: 650; margin-top: 3px; }
+footer { border-top: 1px solid var(--line); padding: 8px 14px; color: var(--muted); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<header><img src="icons/icon48.png" alt=""><b>AdLytics Xray</b><span id="ver"></span></header>
+<nav>
+  <button id="download">
+    <span class="ico">⬇</span>
+    <span><div class="t">Download Result</div><div class="d">Scan this amazon.in search, storefront or product page and download it as CSV</div><div class="note" id="downloadNote" hidden>Open an amazon.in search, storefront or product page first</div></span>
+  </button>
+  <button id="rank">
+    <span class="ico">📈</span>
+    <span><div class="t">Rank Track</div><div class="d">Keyword index check plus organic and sponsored rank for your ASINs</div></span>
+  </button>
+  <button id="product">
+    <span class="ico">🛒</span>
+    <span><div class="t">Product Track</div><div class="d">Paste hundreds of ASINs: Buy Box status, seller name, price and changes</div></span>
+  </button>
+</nav>
+<footer>Runs in your browser with your amazon.in session.</footer>
+<script src="parse.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

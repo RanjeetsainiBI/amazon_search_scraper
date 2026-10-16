@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "AdLytics Xray - Seller Research for Amazon.in",
   "short_name": "AdLytics Xray",
-  "version": "1.1.0",
-  "description": "Scan amazon.in search pages, storefronts and products: organic & sponsored rank, Buy Box, BSR, manufacturer, seller details. CSV.",
+  "version": "1.2.0",
+  "description": "Amazon.in research: scan & download results, rank tracking with index check, and bulk Buy Box & seller tracking for ASINs.",
   "homepage_url": "https://github.com/RanjeetsainiBI/amazon_search_scraper",
   "icons": {
     "16": "icons/icon16.png",
@@ -15,7 +15,8 @@
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png"
-    }
+    },
+    "default_popup": "popup.html"
   },
   "background": {
     "service_worker": "background.js"

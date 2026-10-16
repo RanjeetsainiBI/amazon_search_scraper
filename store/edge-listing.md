@@ -29,7 +29,7 @@ Scan amazon.in search pages, storefronts and products: organic & sponsored rank,
 **Description:**
 
 ```
-AdLytics Xray turns any amazon.in search results page, seller storefront or product page into a sortable research table, in one click.
+AdLytics Xray turns any amazon.in search results page, seller storefront or product page into a sortable research table, in one click. Click the toolbar icon for three tools: Download Result, Rank Track and Product Track.
 
 ⚡ QUICK SCAN: instant
 • Page, position, organic rank and sponsored (SP) rank, counted across up to 10 result pages
@@ -44,7 +44,15 @@ AdLytics Xray turns any amazon.in search results page, seller storefront or prod
 • Image count, A+ content, video, bullet count, date first available
 • Seller account name, registered business name and business address (city, state, PIN code), seller rating
 
-🔑 INDEX CHECKER
+🛒 PRODUCT TRACK: Buy Box monitoring in bulk
+• Paste or upload up to 1,000 ASINs
+• Who holds the Buy Box, at what price, FBA or FBM, number of offers
+• Flags No Buy Box, Unavailable and Not found (removed or suppressed) listings
+• Add your seller names or IDs to see at a glance where you've lost the Buy Box
+• Compares with the last check: seller changes, price changes, new offers
+• Filter by tile and export to CSV
+
+📈 RANK TRACK: index check & keyword rank
 • Check up to 200 keywords against up to 10 ASINs: indexed or not, plus organic and sponsored rank on pages 1–5
 • Keyword ideas from the listing's title, bullets and brand in one click
 • Copy not-indexed keywords for your backend search terms, or export to CSV
@@ -106,7 +114,10 @@ To test:
 4. Click "Deep scan": the extension fetches each product page and seller profile from amazon.in at 3–7 s per page and adds Buy Box, BSR, manufacturer and seller business details. A full page takes a few minutes; press Stop at any time.
 5. Click "CSV" to export.
 It also works on product pages (amazon.in/dp/...) and seller storefronts (amazon.in/s?me=...).
-Index Checker: click the "Index Checker" button in the panel (or the toolbar icon on any non-Amazon tab). Paste an ASIN such as one from the search page and a few keywords, then press "Check index".
+The toolbar icon opens a menu with three options:
+- "Download Result" opens the panel above on the current amazon.in page.
+- "Rank Track": paste an ASIN (e.g. one from the search page) and a few keywords, then press "Check index".
+- "Product Track": paste a few ASINs, optionally a seller name, then press "Check Buy Box".
 
 Permissions: host access to www.amazon.in only (reading the scanned pages and fetching product/seller pages); storage (settings and a 3-day local cache); scripting (to open the panel on amazon.in tabs that were already open at install time).
 No remote code, no analytics, no data leaves the browser except requests to amazon.in.

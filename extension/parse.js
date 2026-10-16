@@ -212,7 +212,8 @@
 
     const price = num(t(doc, "#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen, #corePriceDisplay_desktop_feature_div .a-price .a-offscreen, #corePrice_feature_div .a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice"));
     const mrp = num(t(doc, "#corePriceDisplay_desktop_feature_div .basisPrice .a-offscreen, #corePriceDisplay_desktop_feature_div .a-text-price .a-offscreen, #corePrice_desktop .a-text-price .a-offscreen"));
-    const offersText = t(doc, "#olpLinkWidget_feature_div, #buybox-see-all-buying-choices, #olp_feature_div, #aod-ingress-link") || "";
+    // Several blocks can mention offers ("See All Buying Options", "New (4) from ₹…"); read them all.
+    const offersText = Array.from(doc.querySelectorAll("#olpLinkWidget_feature_div, #buybox-see-all-buying-choices, #olp_feature_div, #aod-ingress-link")).map(text).join(" ");
     const offers = offersText.match(/\((\d+)\)/) || offersText.match(/(\d+)\s+(?:new\s+)?offers?/i);
     const aplus = q(doc, "#aplus, #aplus_feature_div, #aplusBrandStory_feature_div");
     const availability = t(doc, "#availability") || t(doc, "#outOfStock");
