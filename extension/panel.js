@@ -211,7 +211,13 @@
       status("Stopping…");
     };
     ui("csv").onclick = exportCsv;
-    ui("index").onclick = () => chrome.runtime.sendMessage({ type: "ax-open-index", asin: P.asinFromUrl(location.href) || "" });
+    ui("index").onclick = () => {
+      try {
+        chrome.runtime.sendMessage({ type: "ax-open-index", asin: P.asinFromUrl(location.href) || "" });
+      } catch (e) {
+        status("Xray was updated. Press F5 to refresh this page, then try again.", true);
+      }
+    };
     ui("filter").oninput = (e) => ((state.filter = e.target.value.toLowerCase()), renderTable());
     shadow.getElementById("show").onclick = (e) => {
       const b = e.target.closest("button");
@@ -284,6 +290,7 @@
     } catch (e) {
       if (e.stopped) status(`Stopped · ${state.rows.length} listings kept`);
       else if (e.captcha) status("Amazon wants a captcha check. Open any amazon.in page in a new tab, solve it, then press Deep scan again (finished rows are remembered).", true);
+      else if (/context invalidated/i.test(e.message)) status("Xray was updated. Press F5 to refresh this page, then scan again.", true);
       else {
         status("Error: " + e.message, true);
         console.error("[AdLytics Xray]", e);

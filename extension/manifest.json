@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AdLytics Xray - Seller Research for Amazon.in",
   "short_name": "AdLytics Xray",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Amazon.in research: scan & download results, rank tracking with index check, and bulk Buy Box & seller tracking for ASINs.",
   "homepage_url": "https://github.com/RanjeetsainiBI/amazon_search_scraper",
   "icons": {

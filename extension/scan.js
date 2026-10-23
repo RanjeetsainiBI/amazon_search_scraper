@@ -26,10 +26,16 @@
   // ------------------------------------------------------------ cache (chrome.storage.local)
 
   const hasStorage = () => typeof chrome !== "undefined" && chrome.storage && chrome.storage.local;
+  // After Xray is updated or reloaded, a tab opened before that keeps the old copy, whose chrome.storage
+  // calls throw "Extension context invalidated". The cache is only a speed-up, so scans carry on without it.
   async function cacheGet(key) {
     if (!hasStorage()) return null;
-    const v = (await chrome.storage.local.get(key))[key];
-    return v && Date.now() - v.t < CACHE_DAYS * 864e5 ? v.d : null;
+    try {
+      const v = (await chrome.storage.local.get(key))[key];
+      return v && Date.now() - v.t < CACHE_DAYS * 864e5 ? v.d : null;
+    } catch (e) {
+      return null;
+    }
   }
   async function cacheSet(key, d) {
     if (!hasStorage()) return;
@@ -37,7 +43,9 @@
       await chrome.storage.local.set({ [key]: { t: Date.now(), d } });
     } catch (e) {
       // Storage full: drop the cache and carry on without it.
-      await chrome.storage.local.clear();
+      try {
+        await chrome.storage.local.clear();
+      } catch (e2) {}
     }
   }
   async function clearCache() {

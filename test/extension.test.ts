@@ -360,3 +360,23 @@ test("product track: seller details are fetched once per seller", async () => {
   await T.run({ asins: ["B0SP000003"], fetchDoc, results: {}, sellerInfo: false });
   assert.equal(calls.length, 1, "seller details off: product page only");
 });
+
+test("deep scan carries on when the extension context is gone (Xray updated with the tab open)", async () => {
+  const dead = () => Promise.reject(new Error("Extension context invalidated."));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (win as any).chrome = { storage: { local: { get: dead, set: dead, clear: dead } } };
+  try {
+    const product = doc("ext-product.html");
+    const rows = [{ asin: "B0SP000001", title: "x", reviews: null }];
+    const origFetch = win.fetch;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (win as any).fetch = async () => ({ ok: true, status: 200, url: "https://www.amazon.in/dp/B0SP000001", text: async () => product.documentElement.outerHTML });
+    await S.deepScan({ rows, opts: { minDelay: 0, maxDelay: 0, sellerPages: false, shouldStop: () => false }, onUpdate: () => {} });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (win as any).fetch = origFetch;
+    assert.equal(rows[0].reviews, 8210, "product-page details filled in despite the dead cache");
+  } finally {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (win as any).chrome;
+  }
+});
