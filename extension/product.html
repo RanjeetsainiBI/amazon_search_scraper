@@ -72,6 +72,12 @@ a:hover { text-decoration: underline; }
 .pill.not_found { background: var(--bad-soft); color: var(--bad); }
 .chg { display: block; color: var(--info); font-size: 12px; }
 .chg.status, .chg.seller { color: var(--bad); font-weight: 650; }
+.pill.coupon { background: var(--ok-soft); color: var(--ok); }
+.pill.deal { background: var(--bad); color: #fff; }
+.chg.promo { color: var(--ok); }
+label.check { justify-content: flex-start; align-items: center; font-weight: 600; cursor: pointer; }
+label.check input { width: auto; margin: 0; }
+label.check small { margin-left: auto; }
 .empty { padding: 50px 20px; text-align: center; color: var(--muted); }
 </style>
 </head>
@@ -79,7 +85,7 @@ a:hover { text-decoration: underline; }
 <header>
   <img src="icons/icon48.png" alt="">
   <h1>Product Track</h1>
-  <span>Buy Box &amp; seller check · AdLytics Xray · amazon.in</span>
+  <span>Buy Box, listing &amp; seller details · AdLytics Xray · amazon.in</span>
 </header>
 <main>
   <section class="card">
@@ -97,6 +103,7 @@ a:hover { text-decoration: underline; }
 
     <label>Seconds per product <small>min – max</small></label>
     <div class="row"><input type="number" id="minDelay" min="1" step="0.5"><input type="number" id="maxDelay" min="1" step="0.5"></div>
+    <label class="check"><input type="checkbox" id="sellerInfo"> Seller details <small>business name, address, rating</small></label>
     <div class="est" id="est">Paste ASINs to see how long it will take.</div>
     <button class="primary" id="start">Check Buy Box</button>
     <div class="btns">

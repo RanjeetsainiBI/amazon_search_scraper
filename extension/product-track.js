@@ -37,6 +37,56 @@
       reviews: p.reviews,
       bsr: p.bsr,
       bsrCategory: p.bsrCategory,
+      subRanks: p.subRanks,
+      discountPct: status === "buybox" ? p.discountPct : null,
+      shipsFrom: status === "buybox" ? p.shipsFrom : null,
+      coupon: p.coupon,
+      couponPercent: p.couponPercent,
+      couponAmount: p.couponAmount,
+      deal: p.deal,
+      badges: p.badges,
+      boughtPastMonth: p.boughtPastMonth,
+      delivery: p.delivery,
+      deliveryCharge: p.deliveryCharge,
+      fastestDelivery: p.fastestDelivery,
+      deliverTo: p.deliverTo,
+      listingDate: p.listingDate,
+      dateFirstAvailable: p.dateFirstAvailable,
+      listingAgeDays: p.listingAgeDays,
+      manufacturer: p.manufacturer,
+      packer: p.packer,
+      importer: p.importer,
+      countryOfOrigin: p.countryOfOrigin,
+      modelNumber: p.modelNumber,
+      partNumber: p.partNumber,
+      genericName: p.genericName,
+      netQuantity: p.netQuantity,
+      itemWeight: p.itemWeight,
+      dimensions: p.dimensions,
+      department: p.department,
+      imageCount: p.imageCount,
+      hasAplus: p.hasAplus,
+      hasVideo: p.hasVideo,
+      bulletCount: p.bulletCount,
+      bullets: p.bullets,
+    };
+  }
+
+  /** Seller-profile fields copied onto a snapshot (from /sp?seller=…). */
+  function withSeller(snap, seller) {
+    if (!seller) return snap;
+    return {
+      ...snap,
+      // The profile's store name is the reliable one when the product page only had a generic link.
+      buyboxSeller: snap.buyboxSeller || seller.storeName || null,
+      sellerStoreName: seller.storeName,
+      businessName: seller.businessName,
+      businessAddress: seller.businessAddress,
+      sellerCity: seller.city,
+      sellerState: seller.state,
+      sellerPincode: seller.pincode,
+      sellerRating: seller.sellerRating,
+      sellerRatingsCount: seller.sellerRatingsCount,
     };
   }
 
@@ -72,6 +122,12 @@
       const pct = Math.round(((cur.price - prev.price) / prev.price) * 100);
       out.push({ kind: "price", text: `Price ₹${prev.price} → ₹${cur.price} (${pct > 0 ? "+" : ""}${pct}%)` });
     }
+    if ((prev.coupon || null) !== (cur.coupon || null) && (prev.coupon !== undefined)) {
+      out.push({ kind: "promo", text: !cur.coupon ? `Coupon ${prev.coupon} ended` : !prev.coupon ? `Coupon ${cur.coupon} started` : `Coupon ${prev.coupon} → ${cur.coupon}` });
+    }
+    if ((prev.deal || null) !== (cur.deal || null) && (prev.deal !== undefined)) {
+      out.push({ kind: "promo", text: !cur.deal ? `Deal ended (${prev.deal})` : !prev.deal ? `Deal started: ${cur.deal}` : `Deal: ${prev.deal} → ${cur.deal}` });
+    }
     if (prev.otherOffers != null && cur.otherOffers != null && cur.otherOffers > prev.otherOffers) {
       out.push({ kind: "offers", text: `Offers ${prev.otherOffers} → ${cur.otherOffers}` });
     }
@@ -83,10 +139,13 @@
 
   /**
    * Checks every ASIN (skipping ones already in `results` from an interrupted
-   * run). onRow(asin, snap) after each; onProgress(done, total).
+   * run). With `sellerInfo`, each Buy Box seller's profile page is opened once
+   * (cached in `sellers` by seller ID) for business name, address and rating.
+   * onRow(asin, snap) after each; onProgress(done, total).
    */
-  async function run({ asins, fetchDoc, results, onRow, onProgress, shouldStop }) {
+  async function run({ asins, fetchDoc, results, sellers, sellerInfo, onRow, onProgress, shouldStop }) {
     const out = results || {};
+    const cache = sellers || {};
     let done = 0;
     for (const asin of asins) {
       if (out[asin]) {
@@ -95,12 +154,20 @@
       }
       if (shouldStop && shouldStop()) throw new root.AxScan.StopError();
       const doc = await fetchDoc(`https://www.amazon.in/dp/${asin}?th=1&psc=1`);
-      out[asin] = { ...snapshot(doc, asin), checkedAt: new Date().toISOString() };
+      let snap = snapshot(doc, asin);
+      if (sellerInfo && snap.sellerId) {
+        if (!cache[snap.sellerId]) {
+          if (shouldStop && shouldStop()) throw new root.AxScan.StopError();
+          cache[snap.sellerId] = P.parseSeller(await fetchDoc(`https://www.amazon.in/sp?seller=${snap.sellerId}`), snap.sellerId);
+        }
+        snap = withSeller(snap, cache[snap.sellerId]);
+      }
+      out[asin] = { ...snap, checkedAt: new Date().toISOString() };
       if (onRow) await onRow(asin, out[asin]);
       onProgress && onProgress(++done, asins.length);
     }
     return out;
   }
 
-  root.AxTrack = { snapshot, parseOwn, owner, changes, label, run };
+  root.AxTrack = { snapshot, withSeller, parseOwn, owner, changes, label, run };
 })(typeof window !== "undefined" ? window : globalThis);

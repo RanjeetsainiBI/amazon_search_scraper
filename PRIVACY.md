@@ -14,7 +14,7 @@ When you click **Quick scan** or **Deep scan** on an amazon.in page, the extensi
 
 - the amazon.in page you are on (search results, a seller storefront or a product page),
 - for Rank Track, the amazon.in search results for the keywords and ASINs you enter (and, for keyword ideas, that ASIN's product page),
-- for Product Track, the public product pages of the ASINs you enter or upload, and
+- for Product Track, the public product pages of the ASINs you enter or upload and, with "Seller details" on, the public seller profile page of each Buy Box seller, and
 - for a deep scan, the public product pages and seller profile pages of the listings shown. These are fetched from amazon.in in your own browser.
 
 This includes product titles, prices, ratings, review counts, rankings, the Buy Box seller, product details (such as manufacturer, packer and importer), and the business name and address that sellers publish on their amazon.in seller profile.

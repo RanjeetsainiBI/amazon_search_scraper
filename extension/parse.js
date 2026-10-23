@@ -187,6 +187,92 @@
     return false;
   }
 
+  // ---------------------------------------------------------------- listing signals
+
+  const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+  /** "12 March 2022" / "March 12, 2022" / "12 Mar 2022" -> "2022-03-12" (null if unreadable). */
+  function isoDate(s) {
+    const v = clean(s).toLowerCase().replace(/,/g, "");
+    const m = v.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/) || v.match(/^([a-z]+)\s+(\d{1,2})\s+(\d{4})$/);
+    if (!m) return null;
+    const [day, mon] = /^\d/.test(m[1]) ? [m[1], m[2]] : [m[2], m[1]];
+    const mi = MONTHS.findIndex((x) => x.startsWith(mon.slice(0, 3)));
+    if (mi < 0) return null;
+    return `${m[3]}-${String(mi + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  /** Whole days from an ISO date to `now`. */
+  const daysSince = (iso, now = Date.now()) => (iso ? Math.max(0, Math.floor((now - Date.parse(iso + "T00:00:00+05:30")) / 864e5)) : null);
+
+  const DEAL = /(Lightning Deal|Deal of the Day|Prime Day Deal|Prime Exclusive Deal|Great Indian Festival(?: Deal)?|Great Freedom Festival(?: Deal)?|Great Summer Sale(?: Deal)?|Great Republic Day Sale(?: Deal)?|Limited time deal|Blockbuster Deal|Mega Deal|Deal)/i;
+
+  /** "Apply ₹50 coupon", "Apply 5% voucher", "Save 10% with coupon" -> { percent, amount }, each derived from the other with the price. */
+  function parseCoupon(s, price) {
+    const v = clean(s);
+    if (!v || !/coupon|voucher/i.test(v)) return null;
+    const m = v.match(/(₹\s?[\d,]+(?:\.\d+)?|\d+(?:\.\d+)?\s?%)\s*(?:off\s*)?(?:with\s+)?(?:coupon|voucher)/i) || v.match(/(?:coupon|voucher)[^₹\d]{0,20}(₹\s?[\d,]+(?:\.\d+)?|\d+(?:\.\d+)?\s?%)/i);
+    if (!m) return { percent: null, amount: null };
+    if (m[1].includes("%")) {
+      const percent = num(m[1]);
+      return { percent, amount: percent != null && price ? Math.round(price * percent) / 100 : null };
+    }
+    const amount = num(m[1]);
+    return { percent: amount != null && price ? Math.round((amount / price) * 1000) / 10 : null, amount };
+  }
+
+  /** Badges, coupon, deal and delivery promise from a product page. */
+  function listingSignals(doc, price) {
+    const badges = [];
+    const add = (b) => {
+      const v = clean(b);
+      if (v && !badges.some((x) => x.toLowerCase() === v.toLowerCase())) badges.push(v.slice(0, 80));
+    };
+    if (/amazon'?s\s*choice/i.test(t(doc, "#acBadge_feature_div, .ac-badge-wrapper") || "") || q(doc, "#acBadge_feature_div .ac-badge-rectangle")) add("Amazon's Choice");
+    const bs = t(doc, "#zeitgeistBadge_feature_div, .zg-badge-wrapper, #bestSellerBadge_feature_div") || "";
+    if (/best\s*seller/i.test(bs)) add((bs.match(/#\s?\d+\s+Best\s*Seller(?:\s+in\s+.+)?/i) || ["Best Seller"])[0]);
+    const bought = (t(doc, "#social-proofing-faceout-title-tk_bought, #socialProofingAsinFaceout_feature_div, [id^='social-proofing-faceout-title']") || "").match(/([\d.,]+\s*[KkMm]?\+?)\s*bought in past month/i);
+    if (bought) add(`${clean(bought[1])} bought in past month`);
+    if (/top brand/i.test(text(q(doc, "#brandInsights_feature_div_3, #brandInsights_feature_div, [id^='brandInsights']")))) add("Top Brand");
+    if (q(doc, "#apex_desktop i.a-icon-prime, #corePriceDisplay_desktop_feature_div i.a-icon-prime, #deliveryBlockMessage i.a-icon-prime, #primeBadge")) add("Prime");
+    const low = (t(doc, "#availability") || "").match(/only\s+(\d+)\s+left in stock/i);
+    if (low) add(`Only ${low[1]} left in stock`);
+    if (/new launch/i.test(text(q(doc, "#newLaunchBadge_feature_div, #newLaunch_feature_div")))) add("New Launch");
+
+    const dealText = ["#dealBadge_feature_div", "#dealBadgeSupportingText", "#apex_desktop .dealBadge", "#corePriceDisplay_desktop_feature_div .dealBadge", "#dealsAccordionRow", "#goldboxBuyBox"].map((sel) => t(doc, sel)).find(Boolean);
+    const deal = (dealText && (dealText.match(DEAL) || [])[1]) || null;
+
+    // Amazon inlines a <style> block in the coupon badge; read text without it.
+    const plain = (el) => {
+      const c = el.cloneNode(true);
+      c.querySelectorAll("style, script").forEach((x) => x.remove());
+      return text(c);
+    };
+    const couponTexts = Array.from(doc.querySelectorAll("#promoPriceBlockMessage_feature_div, #couponBadgeRegularVpc, #vpcButton, [id^='couponText'], [id^='couponBadge'], #promotions_feature_div, #couponFeature, .couponLabelText"))
+      .map(plain)
+      .filter((v) => /coupon|voucher/i.test(v));
+    const coupon = couponTexts.map((v) => parseCoupon(v, price)).find((c) => c && (c.percent != null || c.amount != null)) || (couponTexts[0] ? parseCoupon(couponTexts[0], price) : null);
+    const couponLabel = !coupon ? null : coupon.percent != null ? `${coupon.percent}%${coupon.amount != null ? ` (₹${coupon.amount})` : ""}` : coupon.amount != null ? `₹${coupon.amount}` : "Coupon";
+
+    const primary = q(doc, "#mir-layout-DELIVERY_BLOCK-slot-PRIMARY_DELIVERY_MESSAGE_LARGE");
+    const secondary = q(doc, "#mir-layout-DELIVERY_BLOCK-slot-SECONDARY_DELIVERY_MESSAGE_LARGE");
+    const attr = (el, a) => clean(el && q(el, `[${a}]`)?.getAttribute(a)) || null;
+    const delivery = attr(primary, "data-csa-c-delivery-time") || (primary && t(primary, ".a-text-bold")) || t(doc, "#delivery-message .a-text-bold, #ddmDeliveryMessage .a-text-bold");
+    const deliveryCharge = attr(primary, "data-csa-c-delivery-price") || (/free delivery/i.test(text(primary)) ? "FREE" : null);
+    const fastest = attr(secondary, "data-csa-c-delivery-time") || (secondary && t(secondary, ".a-text-bold")) || null;
+
+    return {
+      badges,
+      boughtPastMonth: bought ? count(bought[1]) : null,
+      deal,
+      coupon: couponLabel,
+      couponPercent: coupon ? coupon.percent : null,
+      couponAmount: coupon ? coupon.amount : null,
+      delivery,
+      deliveryCharge,
+      fastestDelivery: fastest,
+      deliverTo: t(doc, "#glow-ingress-line2"),
+    };
+  }
+
   // Amazon sometimes puts a "Learn more about the seller" link next to (or instead of) the store name.
   const GENERIC_SELLER = /^(sold by|learn more|see more|see all|details|visit|view|seller information|more information|about the seller)\b|learn more about/i;
   function sellerName(candidates) {
@@ -254,6 +340,17 @@
       importer: pick(d, /^importer$/i, /^imported by$/i),
       countryOfOrigin: pick(d, /^country of origin$/i),
       dateFirstAvailable: pick(d, /^date first available$/i),
+      listingDate: isoDate(pick(d, /^date first available$/i)),
+      listingAgeDays: daysSince(isoDate(pick(d, /^date first available$/i))),
+      modelNumber: pick(d, /^item model number$/i, /^model number$/i, /^model$/i),
+      partNumber: pick(d, /^item part number$/i, /^part number$/i),
+      genericName: pick(d, /^generic name$/i),
+      netQuantity: pick(d, /^net quantity$/i),
+      itemWeight: pick(d, /^item weight$/i, /^weight$/i),
+      dimensions: pick(d, /^product dimensions$/i, /^item dimensions/i, /^package dimensions$/i),
+      department: pick(d, /^department$/i),
+      bullets: Array.from(doc.querySelectorAll("#feature-bullets li span.a-list-item")).map(text).filter(Boolean).join(" | ") || null,
+      ...listingSignals(doc, price),
       imageCount: imageCount(doc),
       hasAplus: !!aplus && clean(aplus.textContent).replace(/\s/g, "").length > 80,
       hasVideo: hasVideo(doc),
@@ -336,5 +433,5 @@
 
   const asinFromUrl = (href) => (String(href).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/) || [])[1] || null;
 
-  root.AxParse = { clean, num, count, isCaptcha, isNotFound, parseSearch, parseProduct, parseSeller, parseBsr, addressParts, sellerIdFromHref, pageKind, asinFromUrl };
+  root.AxParse = { clean, num, count, isoDate, daysSince, parseCoupon, listingSignals, isCaptcha, isNotFound, parseSearch, parseProduct, parseSeller, parseBsr, addressParts, sellerIdFromHref, pageKind, asinFromUrl };
 })(typeof window !== "undefined" ? window : globalThis);

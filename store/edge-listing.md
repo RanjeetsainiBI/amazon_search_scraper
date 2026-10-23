@@ -48,6 +48,8 @@ AdLytics Xray turns any amazon.in search results page, seller storefront or prod
 • Paste or upload up to 1,000 ASINs
 • Who holds the Buy Box, at what price, FBA or FBM, number of offers
 • Flags No Buy Box, Unavailable and Not found (removed or suppressed) listings
+• Listing date and age, coupon, deal, badges, delivery date, manufacturer, model, weight and more
+• Seller business name, address and seller rating from the seller's public profile
 • Add your seller names or IDs to see at a glance where you've lost the Buy Box
 • Compares with the last check: seller changes, price changes, new offers
 • Filter by tile and export to CSV

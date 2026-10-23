@@ -301,3 +301,62 @@ test("product track: run, stop part-way, resume skips checked ASINs", async () =
   assert.deepEqual(asins.map((a) => results[a].status), ["buybox", "no_buybox", "not_found"]);
   assert.deepEqual(plain(progress[progress.length - 1]), [3, 3]);
 });
+
+test("product track: listing date, product details, coupon, deal, badges and delivery", () => {
+  const p = plain(T.snapshot(doc("ext-product.html"), "B0SP000001"));
+  assert.equal(p.listingDate, "2022-03-12");
+  assert.ok(p.listingAgeDays > 365, "age counted from Date First Available");
+  assert.equal(p.manufacturer, "Boldfit Sports Pvt Ltd, Noida, Uttar Pradesh 201301");
+  assert.equal(p.countryOfOrigin, "China");
+  assert.equal(p.imageCount, 6);
+  assert.equal(p.discountPct, 60);
+  assert.equal(P.isoDate("March 5, 2024"), "2024-03-05");
+  assert.equal(P.isoDate("5 Sept 2024"), "2024-09-05");
+  assert.equal(P.isoDate("soon"), null);
+
+  const s = plain(P.listingSignals(html(`
+    <div id="acBadge_feature_div"><span class="ac-badge-rectangle">Amazon's Choice</span></div>
+    <div id="social-proofing-faceout-title-tk_bought"><span>1K+ bought in past month</span></div>
+    <div id="dealBadge_feature_div"><span>Limited time deal</span></div>
+    <div id="couponBadgeRegularVpc"><style>.newCouponBadge { color: black; min-width: 54px }</style><span class="newCouponBadge">Coupon:</span> <label id="couponTextpctch">Apply 5% coupon</label></div>
+    <div id="mir-layout-DELIVERY_BLOCK-slot-PRIMARY_DELIVERY_MESSAGE_LARGE"><span data-csa-c-delivery-price="FREE" data-csa-c-delivery-time="Sunday, 26 October">FREE delivery</span></div>
+    <div id="mir-layout-DELIVERY_BLOCK-slot-SECONDARY_DELIVERY_MESSAGE_LARGE"><span data-csa-c-delivery-time="Tomorrow, 24 October">Or fastest</span></div>`), 500));
+  assert.deepEqual(s.badges, ["Amazon's Choice", "1K+ bought in past month"]);
+  assert.equal(s.boughtPastMonth, 1000);
+  assert.equal(s.deal, "Limited time deal");
+  assert.equal(s.coupon, "5% (₹25)");
+  assert.equal(s.delivery, "Sunday, 26 October");
+  assert.equal(s.deliveryCharge, "FREE");
+  assert.equal(s.fastestDelivery, "Tomorrow, 24 October");
+});
+
+test("product track: coupon and deal changes are flagged", () => {
+  const base = plain(T.snapshot(PAGE_BUYBOX("Zen Official", "A1ZENSELLER01", 600), "B0A"));
+  const texts = (c: { text: string }[]) => plain(c).map((x) => x.text);
+  assert.deepEqual(texts(T.changes(base, { ...base, coupon: "5% (₹30)", deal: "Lightning Deal" })), ["Coupon 5% (₹30) started", "Deal started: Lightning Deal"]);
+  const old = { ...base } as Record<string, unknown>;
+  delete old.coupon;
+  delete old.deal;
+  assert.deepEqual(texts(T.changes(old, { ...base, coupon: "5%" })), [], "snapshots from before 1.3 don't report a coupon change");
+});
+
+test("product track: seller details are fetched once per seller", async () => {
+  const product = doc("ext-product.html");
+  const seller = doc("seller.html");
+  const calls: string[] = [];
+  const fetchDoc = async (url: string) => {
+    calls.push(url);
+    return url.includes("/sp?") ? seller : product;
+  };
+  const results: Record<string, Record<string, unknown>> = {};
+  const sellers = {};
+  await T.run({ asins: ["B0SP000001", "B0SP000002"], fetchDoc, results, sellers, sellerInfo: true });
+  assert.equal(calls.filter((u) => u.includes("/sp?")).length, 1, "the shared seller's profile is opened once");
+  const r = plain(results.B0SP000002);
+  assert.equal(r.businessName, "FITKART RETAIL PRIVATE LIMITED");
+  assert.ok(r.sellerState, "state read from the business address");
+  assert.ok(r.businessAddress);
+  calls.length = 0;
+  await T.run({ asins: ["B0SP000003"], fetchDoc, results: {}, sellerInfo: false });
+  assert.equal(calls.length, 1, "seller details off: product page only");
+});
