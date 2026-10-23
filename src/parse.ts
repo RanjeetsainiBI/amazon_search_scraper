@@ -134,6 +134,16 @@ export function sellerIdFromHref(href: string | null | undefined): string | null
   return m ? m[1] : null;
 }
 
+// Amazon sometimes puts a "Learn more about the seller" link next to (or instead of) the store name.
+const GENERIC_SELLER = /^(sold by|learn more|see more|see all|details|visit|view|seller information|more information|about the seller)\b|learn more about/i;
+export function pickSellerName(candidates: (string | null | undefined)[]): string | null {
+  for (const c of candidates) {
+    const name = clean(String(c ?? "").replace(/^sold by\s*:?\s*/i, "").replace(/\s*(learn more about (the )?seller|seller information|details)\s*\.?$/i, ""));
+    if (name && !GENERIC_SELLER.test(name)) return name;
+  }
+  return null;
+}
+
 export function parseProduct(html: string, asin: string): ProductInfo {
   const $ = cheerio.load(html);
   const details = productDetails($);
@@ -144,12 +154,14 @@ export function parseProduct(html: string, asin: string): ProductInfo {
 
   const sellerLink = $("#sellerProfileTriggerId").first();
   const merchantLink = $('#merchant-info a[href*="seller="], #tabular-buybox a[href*="seller="], #merchantInfoFeature_feature_div a[href*="seller="]').first();
-  const sellerName =
-    clean(sellerLink.text()) ||
-    clean(merchantLink.text()) ||
-    clean($('#tabular-buybox [tabular-attribute-name="Sold by"] .tabular-buybox-text').text()) ||
-    clean($("#merchantInfoFeature_feature_div .offer-display-feature-text").first().text()) ||
-    null;
+  const sellerName = pickSellerName([
+    clean(sellerLink.text()),
+    ...$('#merchant-info a[href*="seller="], #tabular-buybox a[href*="seller="], #merchantInfoFeature_feature_div a[href*="seller="], [offer-display-feature-name="desktop-merchant-info"] a[href*="seller="]').toArray().map((e) => $(e).text()),
+    clean($('#tabular-buybox [tabular-attribute-name="Sold by"] .tabular-buybox-text').text()),
+    clean($('[offer-display-feature-name="desktop-merchant-info"] .offer-display-feature-text-message').first().text()),
+    clean($("#merchantInfoFeature_feature_div .offer-display-feature-text-message").first().text()),
+    clean($("#merchantInfoFeature_feature_div .offer-display-feature-text").first().text()),
+  ]);
   const sellerId =
     sellerIdFromHref(sellerLink.attr("href")) ??
     sellerIdFromHref(merchantLink.attr("href")) ??

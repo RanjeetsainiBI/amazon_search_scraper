@@ -87,6 +87,21 @@ test("product: buy box, FBA, offers, BSR, manufacturer, A+, video, images", () =
   assert.equal(p.bulletCount, 3);
 });
 
+test("product: a 'Learn more about the seller' link is not the seller name", () => {
+  const html = (soldBy: string) => `<html><head><title>x</title></head><body><span id="productTitle">Oil</span><input id="add-to-cart-button">
+    <div id="offerDisplayFeatures_desktop"><div id="fulfillerInfoFeature_feature_div" offer-display-feature-name="desktop-fulfiller-info"><span class="offer-display-feature-text">Amazon</span></div>
+    <div id="merchantInfoFeature_feature_div" offer-display-feature-name="desktop-merchant-info">${soldBy}</div></div></body></html>`;
+  const parse = (h: string) => P.parseProduct(new win.DOMParser().parseFromString(h, "text/html"), "B0HFNF9PXK");
+  // Name as plain text, the link only says "Learn more".
+  const a = parse(html(`<span class="offer-display-feature-text"><span class="offer-display-feature-text-message">WOMEN PLANET INCORPORATION</span></span><a id="sellerProfileTriggerId" href="/gp/help/seller/at-a-glance.html?seller=A2WPINC000001">Learn more about the seller</a>`));
+  assert.equal(a.buyboxSeller, "WOMEN PLANET INCORPORATION");
+  assert.equal(a.sellerId, "A2WPINC000001");
+  assert.equal(a.fulfillment, "FBA");
+  // Name link first, "Learn more" link after it.
+  const b = parse(html(`<span class="offer-display-feature-text"><a href="/sp?seller=A2WPINC000001">WOMEN PLANET INCORPORATION</a></span><a id="sellerProfileTriggerId" href="/sp?seller=A2WPINC000001">Learn more about the seller</a>`));
+  assert.equal(b.buyboxSeller, "WOMEN PLANET INCORPORATION");
+});
+
 test("product: older layout from the CLI fixtures still parses", () => {
   const p = P.parseProduct(doc("product-table.html"), "B0BBBBBBB2");
   assert.equal(p.brand, "Strauss");

@@ -187,6 +187,16 @@
     return false;
   }
 
+  // Amazon sometimes puts a "Learn more about the seller" link next to (or instead of) the store name.
+  const GENERIC_SELLER = /^(sold by|learn more|see more|see all|details|visit|view|seller information|more information|about the seller)\b|learn more about/i;
+  function sellerName(candidates) {
+    for (const c of candidates) {
+      const name = clean(String(c || "").replace(/^sold by\s*:?\s*/i, "").replace(/\s*(learn more about (the )?seller|seller information|details)\s*\.?$/i, ""));
+      if (name && !GENERIC_SELLER.test(name)) return name;
+    }
+    return null;
+  }
+
   function parseProduct(doc, asin) {
     const d = productDetails(doc);
     const byline = t(doc, "#bylineInfo") || "";
@@ -194,12 +204,14 @@
 
     const sellerLink = q(doc, "#sellerProfileTriggerId");
     const merchantLink = q(doc, '#merchant-info a[href*="seller="], #tabular-buybox a[href*="seller="], #merchantInfoFeature_feature_div a[href*="seller="]');
-    const soldBy =
-      text(sellerLink) ||
-      text(merchantLink) ||
-      t(doc, '#tabular-buybox [tabular-attribute-name="Sold by"] .tabular-buybox-text') ||
-      t(doc, "#merchantInfoFeature_feature_div .offer-display-feature-text") ||
-      null;
+    const soldBy = sellerName([
+      text(sellerLink),
+      ...Array.from(doc.querySelectorAll('#merchant-info a[href*="seller="], #tabular-buybox a[href*="seller="], #merchantInfoFeature_feature_div a[href*="seller="], [offer-display-feature-name="desktop-merchant-info"] a[href*="seller="]')).map(text),
+      t(doc, '#tabular-buybox [tabular-attribute-name="Sold by"] .tabular-buybox-text'),
+      t(doc, '[offer-display-feature-name="desktop-merchant-info"] .offer-display-feature-text-message'),
+      t(doc, "#merchantInfoFeature_feature_div .offer-display-feature-text-message"),
+      t(doc, "#merchantInfoFeature_feature_div .offer-display-feature-text"),
+    ]);
     const sellerId = sellerIdFromHref(sellerLink?.getAttribute("href")) || sellerIdFromHref(merchantLink?.getAttribute("href")) || q(doc, "#merchantID, input[name='merchantID']")?.getAttribute("value") || null;
     const shipsFrom =
       t(doc, '#tabular-buybox [tabular-attribute-name="Ships from"] .tabular-buybox-text') ||
