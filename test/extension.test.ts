@@ -380,3 +380,21 @@ test("deep scan carries on when the extension context is gone (Xray updated with
     delete (win as any).chrome;
   }
 });
+
+test("product: FBA vs Easy Ship on amazon.in's offer-display layout", () => {
+  // Trimmed from real amazon.in pages (Nov 2026): Easy Ship says "Delivered by Amazon", FBA says "Ships from Amazon".
+  const offer = (label: string, href: string) => html(`<span id="productTitle">x</span><input id="add-to-cart-button">
+    <div id="fulfillerInfoFeature_feature_div"><div class="offer-display-feature-label" offer-display-feature-name="desktop-fulfiller-info"><span>${label}</span></div>
+      <div class="offer-display-feature-text" offer-display-feature-name="desktop-fulfiller-info"><span class="offer-display-feature-text-message">Amazon</span><span class="a-declarative">Amazon</span></div></div>
+    <div id="merchantInfoFeature_feature_div"><div class="offer-display-feature-label"><span>Sold by</span></div>
+      <div class="offer-display-feature-text"><span class="offer-display-feature-text-message"><a href='${href}' id='sellerProfileTriggerId'>ATOLL SHOP</a></span></div></div>`);
+  const easy = plain(P.parseProduct(offer("Delivered by", "/gp/help/seller/at-a-glance.html?seller=A1UFCM8OPOMSW3&asin=B09CDK2K4L"), "B09CDK2K4L"));
+  assert.equal(easy.fulfillment, "FBM (Easy Ship)");
+  assert.equal(easy.shipsFrom, "Amazon");
+  const fba = plain(P.parseProduct(offer("Ships from", "/gp/help/seller/at-a-glance.html?seller=A31848621MNPOE&asin=B0HFNF9PXK&isAmazonFulfilled=1"), "B0HFNF9PXK"));
+  assert.equal(fba.fulfillment, "FBA");
+  // The isAmazonFulfilled flag wins even when the label is missing.
+  assert.equal(P.fulfillmentOf({ soldBy: "X", shipsLabel: null, shipsFrom: null, merchantInfo: "", sellerHref: "/sp?seller=A1&isAmazonFulfilled=1" }), "FBA");
+  assert.equal(P.fulfillmentOf({ soldBy: "X", shipsLabel: "Ships from", shipsFrom: "Kriya Retail", merchantInfo: "", sellerHref: "" }), "FBM");
+  assert.equal(P.fulfillmentOf({ soldBy: "Amazon Retail", shipsLabel: "Ships from", shipsFrom: "Amazon", merchantInfo: "", sellerHref: "" }), "Amazon");
+});

@@ -273,6 +273,21 @@
     };
   }
 
+  /**
+   * "Amazon" (sold by Amazon), "FBA", "FBM (Easy Ship)" or "FBM". amazon.in labels an Easy Ship
+   * offer "Delivered by Amazon", so Amazon in that line alone doesn't mean FBA. The seller link's
+   * isAmazonFulfilled=1 is the most reliable FBA signal; "Ships from Amazon" is the next.
+   */
+  function fulfillmentOf({ soldBy, shipsLabel, shipsFrom, merchantInfo, sellerHref }) {
+    if (!soldBy) return null;
+    if (/^amazon/i.test(soldBy)) return "Amazon";
+    if (/[?&]isAmazonFulfilled=1/.test(sellerHref || "")) return "FBA";
+    const amazonLine = /^amazon/i.test(clean(shipsFrom));
+    if (amazonLine && /delivered by/i.test(shipsLabel || "")) return "FBM (Easy Ship)";
+    if (amazonLine || /fulfilled by amazon/i.test(merchantInfo || "")) return "FBA";
+    return shipsFrom || merchantInfo ? "FBM" : null;
+  }
+
   // Amazon sometimes puts a "Learn more about the seller" link next to (or instead of) the store name.
   const GENERIC_SELLER = /^(sold by|learn more|see more|see all|details|visit|view|seller information|more information|about the seller)\b|learn more about/i;
   function sellerName(candidates) {
@@ -301,12 +316,18 @@
     const sellerId = sellerIdFromHref(sellerLink?.getAttribute("href")) || sellerIdFromHref(merchantLink?.getAttribute("href")) || q(doc, "#merchantID, input[name='merchantID']")?.getAttribute("value") || null;
     const shipsFrom =
       t(doc, '#tabular-buybox [tabular-attribute-name="Ships from"] .tabular-buybox-text') ||
+      t(doc, "#fulfillerInfoFeature_feature_div .offer-display-feature-text-message") ||
       t(doc, "#fulfillerInfoFeature_feature_div .offer-display-feature-text") ||
       null;
     const merchantInfo = t(doc, "#merchant-info") || "";
-    const amazonShips = /amazon/i.test(shipsFrom || "") || /fulfilled by amazon/i.test(merchantInfo);
-    const amazonSells = /^amazon/i.test(soldBy || "");
-    const fulfillment = !soldBy ? null : amazonSells ? "Amazon" : amazonShips ? "FBA" : shipsFrom || merchantInfo ? "FBM" : null;
+    const fulfillment = fulfillmentOf({
+      soldBy,
+      // "Ships from" (FBA) or "Delivered by" (Easy Ship: the seller packs and ships, Amazon only delivers).
+      shipsLabel: t(doc, "#fulfillerInfoFeature_feature_div .offer-display-feature-label") || (q(doc, '#tabular-buybox [tabular-attribute-name="Ships from"]') ? "Ships from" : null),
+      shipsFrom,
+      merchantInfo,
+      sellerHref: [sellerLink, merchantLink].map((a) => (a && a.getAttribute("href")) || "").join(" "),
+    });
 
     const price = num(t(doc, "#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen, #corePriceDisplay_desktop_feature_div .a-price .a-offscreen, #corePrice_feature_div .a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice"));
     const mrp = num(t(doc, "#corePriceDisplay_desktop_feature_div .basisPrice .a-offscreen, #corePriceDisplay_desktop_feature_div .a-text-price .a-offscreen, #corePrice_desktop .a-text-price .a-offscreen"));
@@ -433,5 +454,5 @@
 
   const asinFromUrl = (href) => (String(href).match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/) || [])[1] || null;
 
-  root.AxParse = { clean, num, count, isoDate, daysSince, parseCoupon, listingSignals, isCaptcha, isNotFound, parseSearch, parseProduct, parseSeller, parseBsr, addressParts, sellerIdFromHref, pageKind, asinFromUrl };
+  root.AxParse = { fulfillmentOf, clean, num, count, isoDate, daysSince, parseCoupon, listingSignals, isCaptcha, isNotFound, parseSearch, parseProduct, parseSeller, parseBsr, addressParts, sellerIdFromHref, pageKind, asinFromUrl };
 })(typeof window !== "undefined" ? window : globalThis);

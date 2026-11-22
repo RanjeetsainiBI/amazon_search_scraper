@@ -123,11 +123,12 @@
     let done = 0;
     for (const asin of asins) {
       if (opts.shouldStop()) throw new StopError();
-      let product = await cacheGet("p:" + asin);
+      // "p2:" since 1.3.2: earlier saved results could say FBA for Easy Ship listings.
+      let product = await cacheGet("p2:" + asin);
       if (!product) {
         const d = await fetchDoc(`${location.origin}/dp/${asin}?th=1&psc=1`);
         product = P.isNotFound(d) ? { asin, notFound: true } : P.parseProduct(d, asin);
-        await cacheSet("p:" + asin, product);
+        await cacheSet("p2:" + asin, product);
       }
       let seller = null;
       if (opts.sellerPages && product.sellerId && !/^amazon/i.test(product.buyboxSeller || "")) {
