@@ -2,7 +2,7 @@
 
 _Last updated: 16 October 2026_
 
-AdLytics Xray ("the extension") is a browser extension that helps you research product listings and sellers on amazon.in. This policy explains what the extension does with data.
+AdLytics Xray ("the extension") is a browser extension that helps you research product listings and sellers on amazon.in and flipkart.com. This policy explains what the extension does with data.
 
 ## The short version
 
@@ -10,16 +10,17 @@ AdLytics Xray ("the extension") is a browser extension that helps you research p
 
 ## What the extension reads
 
-When you click **Quick scan** or **Deep scan** on an amazon.in page, the extension reads publicly visible information from:
+When you click **Quick scan** or **Deep scan** on an amazon.in or flipkart.com page, the extension reads publicly visible information from:
 
 - the amazon.in page you are on (search results, a seller storefront or a product page),
 - for Rank Track, the amazon.in search results for the keywords and ASINs you enter (and, for keyword ideas, that ASIN's product page),
 - for Product Track, the public product pages of the ASINs you enter or upload and, with "Seller details" on, the public seller profile page of each Buy Box seller, and
 - for a deep scan, the public product pages and seller profile pages of the listings shown. These are fetched from amazon.in in your own browser.
+- on flipkart.com, the search results page you are on and, for a deep scan, the public product pages of the listings shown (which include the seller's name, rating and scores), fetched from flipkart.com in your own browser.
 
 This includes product titles, prices, ratings, review counts, rankings, the Buy Box seller, product details (such as manufacturer, packer and importer), and the business name and address that sellers publish on their amazon.in seller profile.
 
-The extension does **not** read your Amazon account details, orders, addresses, payment information, browsing history, or any website other than amazon.in.
+The extension does **not** read your Amazon or Flipkart account details, orders, addresses, payment information, browsing history, or any website other than amazon.in and flipkart.com.
 
 ## Where data is stored
 
@@ -31,7 +32,7 @@ The extension does **not** read your Amazon account details, orders, addresses, 
 
 ## What is sent where
 
-- Requests go **only to amazon.in**, the same requests your browser makes when you open those pages yourself.
+- Requests go **only to amazon.in and flipkart.com**, the same requests your browser makes when you open those pages yourself.
 - No data is sent to the developer or to any third party.
 - No advertising, tracking or analytics code is included, and no code is loaded from outside the extension.
 
@@ -40,8 +41,9 @@ The extension does **not** read your Amazon account details, orders, addresses, 
 | Permission | Why |
 |---|---|
 | Access to `www.amazon.in` | To read the page you scan and to fetch the product and seller pages for a deep scan |
+| Access to `www.flipkart.com` | To read the Flipkart search page you scan and to fetch its product pages for a deep scan |
 | `storage` | To keep your settings and the 3-day cache of scan results in your browser |
-| `scripting` | To open the panel on amazon.in tabs that were already open before the extension was installed |
+| `scripting` | To open the panel on amazon.in and flipkart.com tabs that were already open before the extension was installed |
 
 ## Children
 
@@ -55,4 +57,4 @@ If this policy changes, the new version will be published at this address with a
 
 Questions? Open an issue at <https://github.com/RanjeetsainiBI/amazon_search_scraper/issues>.
 
-_AdLytics Xray isn't affiliated with, endorsed by or sponsored by Amazon. Amazon and amazon.in are trademarks of Amazon.com, Inc. or its affiliates._
+_AdLytics Xray isn't affiliated with, endorsed by or sponsored by Amazon or Flipkart. Amazon and amazon.in are trademarks of Amazon.com, Inc. or its affiliates. Flipkart is a trademark of Flipkart Internet Private Limited._

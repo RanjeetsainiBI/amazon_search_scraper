@@ -1,4 +1,4 @@
-# AdLytics Xray: Chrome extension for amazon.in
+# AdLytics Xray: Chrome extension for amazon.in and Flipkart
 
 It works like Helium 10 Xray, but for **amazon.in**. Open a search results page, a seller storefront (`/s?me=…`) or a product page, click **Xray**, and get a table you can sort, filter and export to CSV.
 
@@ -14,6 +14,15 @@ It works like Helium 10 Xray, but for **amazon.in**. Open a search results page,
 On a product page, Quick scan reads that page and Deep scan adds its seller's business details.
 
 Deep scan uses **your own amazon.in session**: the same browser, sign-in and connection you shop with. That means far fewer captchas than a server, and nothing goes to any outside service. Results are kept for 3 days, so a second scan of the same products is instant.
+
+## Flipkart
+
+Open a **flipkart.com search results page** (or a product page), click **Xray**, then **Quick scan** or **Deep scan**:
+
+- **Quick scan:** position, organic and ad rank, FSN, title, brand, variant, price, MRP, discount, rating, ratings, reviews, F-Assured, stock, category.
+- **Deep scan:** opens each product page for the seller name, seller rating, time on Flipkart, products sold, quality and speed scores, Flipkart-fulfilled (FBF) or seller-fulfilled, manufacturer, packer, importer, country of origin, model, net quantity, FSSAI licence.
+
+Flipkart's page styling changes often, so Xray reads the data Flipkart ships inside the page. Sponsored listings are the ones Flipkart serves with an ad block. Rank Track and Product Track are amazon.in only for now.
 
 ## Three tools, one click
 

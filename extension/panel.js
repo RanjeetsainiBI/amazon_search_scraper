@@ -11,6 +11,9 @@
   const inr = (v) => (v == null ? "" : "₹" + Number(v).toLocaleString("en-IN"));
   const n = (v) => (v == null ? "" : Number(v).toLocaleString("en-IN"));
   const origin = () => location.origin;
+  // The site this tab is on: AxFk on flipkart.com, AxParse (amazon.in) otherwise.
+  const site = () => (root.AxFk && root.AxFk.isHere(location) ? root.AxFk : P);
+  const onFlipkart = () => site() !== P;
 
   /** Every column: key, header, deep-only?, display formatter, CSV value. */
   const COLUMNS = [
@@ -58,10 +61,52 @@
     { key: "sellerRatingsCount", label: "Seller ratings", w: 70, deep: true, fmt: n },
   ];
 
+  /** Flipkart columns. "asin" holds the Flipkart product ID (FSN). */
+  const FK_COLUMNS = [
+    { key: "position", label: "#", w: 40 },
+    { key: "page", label: "Page", w: 46 },
+    { key: "type", label: "Type", w: 84 },
+    { key: "organicRankOverall", label: "Organic rank", w: 70 },
+    { key: "sponsoredRankOverall", label: "Ad rank", w: 60 },
+    { key: "image", label: "", w: 44, html: (v) => (v ? `<img src="${esc(v)}" alt="">` : ""), csv: false },
+    { key: "asin", label: "FSN", w: 140, html: (v, r) => (r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(v)}</a>` : esc(v)) },
+    { key: "title", label: "Title", w: 260, cls: "wrap" },
+    { key: "brand", label: "Brand", w: 110 },
+    { key: "variant", label: "Variant", w: 90 },
+    { key: "price", label: "Price", w: 70, fmt: inr },
+    { key: "mrp", label: "MRP", w: 70, fmt: inr },
+    { key: "discountPct", label: "Disc %", w: 56, fmt: (v) => (v == null ? "" : v + "%") },
+    { key: "rating", label: "Rating", w: 56 },
+    { key: "ratingsCount", label: "Ratings", w: 70, fmt: n },
+    { key: "reviews", label: "Reviews", w: 70, fmt: n },
+    { key: "fAssured", label: "F-Assured", w: 70, fmt: yes },
+    { key: "availability", label: "Stock", w: 90 },
+    { key: "category", label: "Category", w: 150 },
+    { key: "buyboxSeller", label: "Seller", w: 150, deep: true, html: (v, r) => `<a href="${esc(root.AxFk.sellersUrl(r))}" target="_blank" rel="noopener" title="All sellers of this product">${esc(v)}</a>` },
+    { key: "sellerId", label: "Seller ID", w: 130, deep: true, hidden: true },
+    { key: "sellerRating", label: "Seller rating", w: 64, deep: true },
+    { key: "sellerTenure", label: "On Flipkart", w: 120, deep: true },
+    { key: "sellerProductsSold", label: "Seller products sold", w: 90, deep: true },
+    { key: "sellerQualityScore", label: "Quality score", w: 70, deep: true },
+    { key: "sellerSpeedScore", label: "Speed score", w: 70, deep: true },
+    { key: "fulfillment", label: "Fulfilment", w: 100, deep: true },
+    { key: "manufacturer", label: "Manufacturer", w: 220, deep: true, cls: "wrap" },
+    { key: "packer", label: "Packer", w: 160, deep: true, cls: "wrap" },
+    { key: "importer", label: "Importer", w: 160, deep: true, cls: "wrap" },
+    { key: "countryOfOrigin", label: "Origin", w: 70, deep: true },
+    { key: "modelName", label: "Model", w: 120, deep: true },
+    { key: "genericName", label: "Generic name", w: 110, deep: true },
+    { key: "netQuantity", label: "Net qty", w: 70, deep: true },
+    { key: "fssai", label: "FSSAI licence", w: 120, deep: true },
+    { key: "sellerAbout", label: "About seller", w: 220, deep: true, cls: "wrap" },
+  ];
+  const columns = () => (onFlipkart() ? FK_COLUMNS : COLUMNS);
+
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
   const CSS = `
   :host { all: initial; }
+  [hidden] { display: none !important; }
   * { box-sizing: border-box; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   .wrap-all { position: fixed; inset: 3vh 2vw; z-index: 2147483646; background: #fff; color: #16191f; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.35); display: flex; flex-direction: column; overflow: hidden; font-size: 13px; }
   .wrap-all.min { inset: auto 20px 20px auto; width: 340px; height: auto; }
@@ -129,8 +174,13 @@
   const saveSettings = () => chrome.storage?.sync?.set({ settings: state.settings }).catch(() => {});
 
   function context() {
-    const kind = P.pageKind(location);
+    const kind = site().pageKind(location);
     const u = new URL(location.href);
+    if (onFlipkart()) {
+      if (kind === "search") return { kind, label: `Flipkart search: “${u.searchParams.get("q") || ""}”` };
+      if (kind === "product") return { kind, label: `Flipkart product: ${root.AxFk.idFromUrl(location.href)}` };
+      return { kind, label: "Open a flipkart.com search or product page" };
+    }
     if (kind === "search") return { kind, label: `Search: “${u.searchParams.get("k") || ""}”` };
     if (kind === "storefront") return { kind, label: `Seller storefront: ${u.searchParams.get("me")}` };
     if (kind === "product") return { kind, label: `Product: ${P.asinFromUrl(location.href)}` };
@@ -149,12 +199,12 @@
         <div class="logo"><i></i>AdLytics Xray</div>
         <div class="ctx" title="${esc(ctx.label)}">${esc(ctx.label)}</div>
         ${listPage ? `<select id="pages" title="How many result pages to scan, starting from this one">${[1, 2, 3, 5, 7, 10].map((p) => `<option value="${p}">${p} page${p > 1 ? "s" : ""}</option>`).join("")}</select>` : ""}
-        <label class="tg" title="Also open each seller's profile for business name and address"><input type="checkbox" id="sellerPages"> Seller info</label>
+        <label class="tg" title="Also open each seller's profile for business name and address" ${onFlipkart() ? "hidden" : ""}><input type="checkbox" id="sellerPages"> Seller info</label>
         <button class="go" id="quick" ${ctx.kind === "other" ? "disabled" : ""}>⚡ Quick scan</button>
         <button class="go2" id="deep" ${ctx.kind === "other" ? "disabled" : ""}>🔎 Deep scan</button>
         <button id="stop" hidden>■ Stop</button>
         <button id="csv" disabled>⬇ CSV</button>
-        <button id="index" title="Keyword index check and rank for this ASIN (opens in a new tab)">📈 Rank Track</button>
+        <button id="index" title="Keyword index check and rank for this ASIN (opens in a new tab)" ${onFlipkart() ? "hidden" : ""}>📈 Rank Track</button>
         <button class="icon" id="gear" title="Settings">⚙</button>
         <button class="icon" id="min" title="Minimise">–</button>
         <button class="icon" id="close" title="Close">×</button>
@@ -169,8 +219,12 @@
         <div class="prog"><i id="bar"></i></div>
         <div class="tbl" id="tbl"><div class="empty">${
           ctx.kind === "other"
-            ? "Go to an amazon.in search results page, a seller storefront or a product page, then open Xray."
-            : "<b>Quick scan</b> reads this page instantly: position, organic and sponsored rank, title, brand, price, MRP, rating, reviews.<br><b>Deep scan</b> also opens every product and seller page: Buy Box, seller, FBA or FBM, BSR, manufacturer, packer, importer, A+, video, business name and address.<br><small>Deep scan goes at a human pace (3–7 s a page) and remembers results for 3 days.</small>"
+            ? onFlipkart()
+              ? "Go to a flipkart.com search results page or a product page, then open Xray."
+              : "Go to an amazon.in search results page, a seller storefront or a product page, then open Xray."
+            : onFlipkart()
+              ? "<b>Quick scan</b> reads the search results: position, organic and ad rank, title, brand, price, MRP, rating, ratings, reviews, F-Assured.<br><b>Deep scan</b> also opens every product page: seller, seller rating, quality and speed scores, Flipkart or seller fulfilment, manufacturer, packer, importer, FSSAI.<br><small>Deep scan goes at a human pace (3–7 s a page) and remembers results for 3 days.</small>"
+              : "<b>Quick scan</b> reads this page instantly: position, organic and sponsored rank, title, brand, price, MRP, rating, reviews.<br><b>Deep scan</b> also opens every product and seller page: Buy Box, seller, FBA or FBM, BSR, manufacturer, packer, importer, A+, video, business name and address.<br><small>Deep scan goes at a human pace (3–7 s a page) and remembers results for 3 days.</small>"
         }</div></div>
       </div>
       <div class="settings" id="settings" hidden>
@@ -251,11 +305,11 @@
     busy(true);
     progress(0);
     const s = state.settings;
-    const opts = { minDelay: s.minDelay, maxDelay: s.maxDelay, sellerPages: s.sellerPages, shouldStop: () => state.stop };
+    const opts = { site: site(), minDelay: s.minDelay, maxDelay: s.maxDelay, sellerPages: s.sellerPages, shouldStop: () => state.stop };
     try {
       if (ctx.kind === "product") {
         status(deep && s.sellerPages ? "Reading this product and its seller…" : "Reading this product…");
-        state.rows = await S.productScan({ doc: document, asin: P.asinFromUrl(location.href), opts: { ...opts, sellerPages: deep && s.sellerPages } });
+        state.rows = await S.productScan({ doc: document, asin: onFlipkart() ? root.AxFk.idFromUrl(location.href) : P.asinFromUrl(location.href), opts: { ...opts, sellerPages: deep && s.sellerPages } });
         progress(1);
       } else {
         const pages = s.pages;
@@ -289,7 +343,7 @@
       progress(1);
     } catch (e) {
       if (e.stopped) status(`Stopped · ${state.rows.length} listings kept`);
-      else if (e.captcha) status("Amazon wants a captcha check. Open any amazon.in page in a new tab, solve it, then press Deep scan again (finished rows are remembered).", true);
+      else if (e.captcha) status(`${site().name || "Amazon"} wants a captcha check. Open any ${onFlipkart() ? "flipkart.com" : "amazon.in"} page in a new tab, solve it, then press Deep scan again (finished rows are remembered).`, true);
       else if (/context invalidated/i.test(e.message)) status("Xray was updated. Press F5 to refresh this page, then scan again.", true);
       else {
         status("Error: " + e.message, true);
@@ -304,7 +358,7 @@
   function visibleRows() {
     let rows = state.rows;
     if (state.show !== "all") rows = rows.filter((r) => r.type === state.show);
-    if (state.filter) rows = rows.filter((r) => COLUMNS.some((c) => String(r[c.key] ?? "").toLowerCase().includes(state.filter)));
+    if (state.filter) rows = rows.filter((r) => columns().some((c) => String(r[c.key] ?? "").toLowerCase().includes(state.filter)));
     if (state.sortKey) {
       const k = state.sortKey;
       rows = [...rows].sort((a, b) => {
@@ -341,7 +395,10 @@
       ["Total reviews", n(rows.reduce((a, r) => a + (r.reviews || 0), 0))],
       ["Brands", n(uniq("brand"))],
     ];
-    if (deep.length) {
+    if (deep.length && onFlipkart()) {
+      const pct = (f) => Math.round((deep.filter(f).length / deep.length) * 100) + "%";
+      stats.push(["Sellers", n(uniq("sellerId"))], ["Flipkart-fulfilled", pct((r) => /FBF/.test(r.fulfillment || ""))], ["F-Assured", pct((r) => r.fAssured === true)]);
+    } else if (deep.length) {
       const fba = deep.filter((r) => r.fulfillment === "FBA").length;
       stats.push(["Sellers", n(uniq("sellerId"))], ["FBA", Math.round((fba / deep.length) * 100) + "%"], ["With address", n(new Set(deep.filter((r) => r.businessAddress).map((r) => r.sellerId)).size)]);
     }
@@ -351,7 +408,7 @@
   function renderTable() {
     if (!state.rows.length) return;
     const showDeep = state.rows.some((r) => r.deep);
-    const cols = COLUMNS.filter((c) => !c.hidden && (!c.deep || showDeep));
+    const cols = columns().filter((c) => !c.hidden && (!c.deep || showDeep));
     const rows = visibleRows();
     const arrow = (k) => (state.sortKey === k ? (state.sortDir > 0 ? " ▲" : " ▼") : "");
     ui("tbl").innerHTML = `<table><thead><tr>${cols
@@ -383,31 +440,29 @@
   }
 
   function exportCsv() {
-    const cols = COLUMNS.filter((c) => c.csv !== false);
+    const fk = onFlipkart();
+    const cols = columns().filter((c) => c.csv !== false);
     const cell = (v) => {
       if (v == null) return "";
       let s = typeof v === "boolean" ? (v ? "Yes" : "No") : String(v);
       if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
       return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = [...cols.map((c) => c.label || c.key), "Product URL", "Seller profile URL", "Seller storefront URL", "Scanned from", "Scanned at"];
+    const extra = fk ? ["Product URL", "All sellers URL"] : ["Product URL", "Seller profile URL", "Seller storefront URL"];
+    const header = [...cols.map((c) => c.label || c.key), ...extra, "Scanned from", "Scanned at"];
     const now = new Date().toISOString();
-    const lines = visibleRows().map((r) =>
-      [
-        ...cols.map((c) => cell(r[c.key])),
-        cell(`${origin()}/dp/${r.asin}`),
-        cell(r.sellerId ? `${origin()}/sp?seller=${r.sellerId}` : ""),
-        cell(r.sellerId ? `${origin()}/s?me=${r.sellerId}` : ""),
-        cell(location.href),
-        now,
-      ].join(","),
-    );
-    const blob = new Blob(["﻿" + header.map(cell).join(",") + "\n" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const links = (r) =>
+      fk
+        ? [r.url || "", r.asin ? root.AxFk.sellersUrl(r) : ""]
+        : [`${origin()}/dp/${r.asin}`, r.sellerId ? `${origin()}/sp?seller=${r.sellerId}` : "", r.sellerId ? `${origin()}/s?me=${r.sellerId}` : ""];
+    const lines = visibleRows().map((r) => [...cols.map((c) => cell(r[c.key])), ...links(r).map(cell), cell(location.href), now].join(","));
+    const blob = new Blob(["\ufeff" + header.map(cell).join(",") + "\n" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const u = new URL(location.href);
-    const name = (u.searchParams.get("k") || u.searchParams.get("me") || P.asinFromUrl(location.href) || "amazon").replace(/[^a-z0-9]+/gi, "-").slice(0, 40);
+    const id = fk ? u.searchParams.get("q") || root.AxFk.idFromUrl(location.href) : u.searchParams.get("k") || u.searchParams.get("me") || P.asinFromUrl(location.href);
+    const name = (id || (fk ? "flipkart" : "amazon")).replace(/[^a-z0-9]+/gi, "-").slice(0, 40);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `xray-${name}-${now.slice(0, 10)}.csv`;
+    a.download = `xray-${fk ? "flipkart-" : ""}${name}-${now.slice(0, 10)}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
@@ -428,5 +483,5 @@
     }
   }
 
-  root.AxPanel = { toggle, COLUMNS };
+  root.AxPanel = { toggle, COLUMNS, FK_COLUMNS };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -67,7 +67,7 @@
       const res = await fetch(url, { credentials: "include" });
       const html = await res.text();
       const doc = new DOMParser().parseFromString(html, "text/html");
-      if (res.status === 503 || P.isCaptcha(doc)) throw new CaptchaError();
+      if (res.status === 503 || (opts.site || P).isCaptcha(doc)) throw new CaptchaError();
       opts.onFetch && opts.onFetch();
       return doc;
     };
@@ -97,15 +97,19 @@
    * onRows(rows) is called after each page so the table fills as it goes.
    */
   async function quickScan({ doc, location, pages, opts, onRows }) {
+    const site = opts.site || P;
     const fetchDoc = makeFetcher(opts);
-    const first = P.parseSearch(doc, Number(new URL(location.href).searchParams.get("page")) || 1);
+    const toUrl = site.pageUrl || pageUrl;
+    // A site whose page on screen may be stale (Flipkart is a single-page app) is read fresh.
+    const firstDoc = site.liveDocTrusted === false ? await fetchDoc(location.href) : doc;
+    const first = site.parseSearch(firstDoc, Number(new URL(location.href).searchParams.get("page")) || 1);
     let rows = first.rows;
     onRows(rankAcrossPages(rows), { page: first.page, of: first.page + pages - 1 });
     let hasNext = first.hasNext;
     for (let i = 1; i < pages && hasNext; i++) {
       const pg = first.page + i;
-      const d = await fetchDoc(pageUrl(location.href, pg));
-      const res = P.parseSearch(d, pg);
+      const d = await fetchDoc(toUrl(location.href, pg));
+      const res = site.parseSearch(d, pg);
       rows = rows.concat(res.rows);
       hasNext = res.hasNext;
       onRows(rankAcrossPages(rows), { page: pg, of: first.page + pages - 1 });
@@ -118,20 +122,24 @@
    * ASINs only). onUpdate(row, done, total) after each one.
    */
   async function deepScan({ rows, opts, onUpdate }) {
+    const site = opts.site || P;
+    const amazon = site === P;
     const fetchDoc = makeFetcher(opts);
     const asins = [...new Set(rows.map((r) => r.asin))];
     let done = 0;
     for (const asin of asins) {
       if (opts.shouldStop()) throw new StopError();
       // "p2:" since 1.3.2: earlier saved results could say FBA for Easy Ship listings.
-      let product = await cacheGet("p2:" + asin);
+      const key = (site.cachePrefix || "p2:") + asin;
+      let product = await cacheGet(key);
       if (!product) {
-        const d = await fetchDoc(`${location.origin}/dp/${asin}?th=1&psc=1`);
-        product = P.isNotFound(d) ? { asin, notFound: true } : P.parseProduct(d, asin);
-        await cacheSet("p2:" + asin, product);
+        const d = await fetchDoc(amazon ? `${location.origin}/dp/${asin}?th=1&psc=1` : site.productUrl(rows.find((r) => r.asin === asin)));
+        product = site.isNotFound(d) ? { asin, notFound: true } : site.parseProduct(d, asin);
+        await cacheSet(key, product);
       }
       let seller = null;
-      if (opts.sellerPages && product.sellerId && !/^amazon/i.test(product.buyboxSeller || "")) {
+      // Flipkart's product page already carries the seller details; only Amazon has a separate profile page.
+      if (amazon && opts.sellerPages && product.sellerId && !/^amazon/i.test(product.buyboxSeller || "")) {
         seller = await cacheGet("s:" + product.sellerId);
         if (!seller) {
           seller = P.parseSeller(await fetchDoc(`${location.origin}/sp?seller=${product.sellerId}`), product.sellerId);
@@ -153,6 +161,12 @@
 
   /** Single product page: live DOM, plus its seller profile when asked. */
   async function productScan({ doc, asin, opts }) {
+    const site = opts.site || P;
+    if (site !== P) {
+      const d = site.liveDocTrusted === false ? await makeFetcher(opts)(location.href) : doc;
+      const title = String(d.title || "").replace(/\s*[-|:]\s*(Price in India|Buy).*$/i, "").replace(/\s*\|\s*Flipkart\.com$/i, "").trim() || null;
+      return [{ page: null, position: null, type: "Product page", title, url: location.href, ...site.parseProduct(d, asin), deep: true }];
+    }
     const row = { page: null, position: null, type: "Product page", ...P.parseProduct(doc, asin), deep: true };
     if (opts.sellerPages && row.sellerId && !/^amazon/i.test(row.buyboxSeller || "")) {
       let seller = await cacheGet("s:" + row.sellerId);

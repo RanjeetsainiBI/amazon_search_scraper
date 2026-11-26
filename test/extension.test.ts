@@ -5,7 +5,7 @@ import { JSDOM } from "jsdom";
 
 // Loads the extension's classic scripts into a jsdom window, the way Chrome loads content scripts.
 const win = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://www.amazon.in/s?k=yoga+mat", runScripts: "outside-only" }).window;
-for (const f of ["parse.js", "scan.js", "index-check.js", "product-track.js"]) win.eval(readFileSync(new URL(`../extension/${f}`, import.meta.url), "utf8"));
+for (const f of ["parse.js", "flipkart.js", "scan.js", "index-check.js", "product-track.js"]) win.eval(readFileSync(new URL(`../extension/${f}`, import.meta.url), "utf8"));
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const P = (win as any).AxParse;
 // Objects made inside jsdom live in another realm; copy them before deep-equal checks.
@@ -397,4 +397,111 @@ test("product: FBA vs Easy Ship on amazon.in's offer-display layout", () => {
   assert.equal(P.fulfillmentOf({ soldBy: "X", shipsLabel: null, shipsFrom: null, merchantInfo: "", sellerHref: "/sp?seller=A1&isAmazonFulfilled=1" }), "FBA");
   assert.equal(P.fulfillmentOf({ soldBy: "X", shipsLabel: "Ships from", shipsFrom: "Kriya Retail", merchantInfo: "", sellerHref: "" }), "FBM");
   assert.equal(P.fulfillmentOf({ soldBy: "Amazon Retail", shipsLabel: "Ships from", shipsFrom: "Amazon", merchantInfo: "", sellerHref: "" }), "Amazon");
+});
+
+// ---------------------------------------------------------------- Flipkart
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const F = (win as any).AxFk;
+
+test("flipkart search: sponsored cards from adInfo, ranks, price, rating, F-Assured, paging", () => {
+  const { rows, hasNext, page, totalPages } = F.parseSearch(doc("fk-search.html"), 2);
+  assert.equal(rows.length, 6);
+  assert.deepEqual(plain(rows.map((r: { type: string }) => r.type)), ["Sponsored", "Sponsored", "Organic", "Organic", "Organic", "Organic"]);
+  assert.deepEqual(plain(rows.map((r: { organicRank: number | null; sponsoredRank: number | null }) => [r.organicRank, r.sponsoredRank])), [[null, 1], [null, 2], [1, null], [2, null], [3, null], [4, null]]);
+  const a = plain(rows[0]);
+  assert.equal(a.asin, "GHEGTS49M9ZGWNMA");
+  assert.equal(a.brand, "Nutralite");
+  assert.equal(a.title, "Nutralite Pure Ghee Carton");
+  assert.equal(a.variant, "1 L");
+  assert.equal(a.price, 632);
+  assert.equal(a.mrp, 735);
+  assert.equal(a.discountPct, 14);
+  assert.equal(a.rating, 4.2);
+  assert.equal(a.ratingsCount, 8519);
+  assert.equal(a.reviews, 591);
+  assert.equal(a.fAssured, true);
+  assert.equal(a.availability, "IN_STOCK");
+  assert.match(a.url, /^https:\/\/www\.flipkart\.com\/nutralite-pure-ghee-carton\/p\/itm\w+\?pid=GHEGTS49M9ZGWNMA/);
+  assert.equal(page, 2);
+  assert.equal(totalPages, 27);
+  assert.equal(hasNext, true);
+});
+
+test("flipkart search: falls back to the DOM cards when the page JSON is missing", () => {
+  const card = (id: string, sp: boolean) =>
+    `<div data-id="${id}"><a href="/x/p/itm1?pid=${id}"><img src="i.jpg"></a>${sp ? '<svg width="62" height="18"><path d="M5.8"/></svg>' : ""}<a title="Wallet ${id}" href="/x/p/itm1?pid=${id}">Wallet</a></div>`;
+  const d = html(card("WCWHKKMZ6ZQM2C2D", true) + card("WCWHS4P7YZNZRB3F", false) + '<a href="?page=2">Next</a>');
+  const { rows, hasNext } = F.parseSearch(d, 1);
+  assert.deepEqual(plain(rows.map((r: { type: string; asin: string }) => [r.asin, r.type])), [["WCWHKKMZ6ZQM2C2D", "Sponsored"], ["WCWHS4P7YZNZRB3F", "Organic"]]);
+  assert.equal(rows[1].title, "Wallet WCWHS4P7YZNZRB3F");
+  assert.equal(hasNext, true);
+});
+
+test("flipkart product: seller, scores, fulfilment, F-Assured, manufacturer, FSSAI", () => {
+  const fbf = plain(F.parseProduct(doc("fk-product-fbf.html"), "GHEGTS49M9ZGWNMA"));
+  assert.equal(fbf.buyboxSeller, "MYTHANGLORYRetail");
+  assert.equal(fbf.sellerId, "e694f417f5ab45a3");
+  assert.equal(fbf.sellerRating, 4.5);
+  assert.equal(fbf.sellerTenure, "5 years with Flipkart");
+  assert.equal(fbf.sellerProductsSold, "9.8Cr+");
+  assert.equal(fbf.sellerQualityScore, "86%");
+  assert.equal(fbf.sellerSpeedScore, "98%");
+  assert.equal(fbf.fssai, "11226998000681");
+  assert.equal(fbf.fulfillment, "Flipkart (FBF)");
+  assert.equal(fbf.fAssured, true);
+  assert.equal(fbf.ratingsCount, 8519, "summed from the star breakdown");
+  assert.equal(fbf.rating, 4.2, "weighted average of the breakdown, as Flipkart shows it");
+  assert.match(fbf.manufacturer, /^Zydus Wellness Ltd/);
+  assert.equal(fbf.countryOfOrigin, "India");
+
+  const own = plain(F.parseProduct(doc("fk-product-seller.html"), "WCWHKKMZ6ZQM2C2D"));
+  assert.equal(own.buyboxSeller, "Mokobara");
+  assert.equal(own.fulfillment, "Seller");
+  assert.equal(own.fAssured, false);
+  assert.equal(own.sellerSpeedScore, "55%");
+  assert.equal(own.modelName, "Stash Bifold Wallet");
+  assert.equal(own.rating, 5);
+});
+
+test("flipkart pages: kind, product ID, paging URL", () => {
+  const loc = (u: string) => ({ href: u });
+  assert.equal(F.pageKind(loc("https://www.flipkart.com/search?q=wallet+for+men")), "search");
+  assert.equal(F.pageKind(loc("https://www.flipkart.com/mokobara-wallet/p/itm54f2465107d73?pid=WCWHKKMZ6ZQM2C2D")), "product");
+  assert.equal(F.pageKind(loc("https://www.flipkart.com/")), "other");
+  assert.equal(F.isHere(loc("https://www.flipkart.com/search?q=x")), true);
+  assert.equal(F.isHere(loc("https://www.amazon.in/s?k=x")), false);
+  assert.equal(F.idFromUrl("/mokobara-wallet/p/itm54f?pid=WCWHKKMZ6ZQM2C2D&lid=x"), "WCWHKKMZ6ZQM2C2D");
+  assert.equal(F.pageUrl("https://www.flipkart.com/search?q=ghee&page=2", 3), "https://www.flipkart.com/search?q=ghee&page=3");
+});
+
+test("flipkart scan: page 1 read fresh, deep scan opens product pages only (no seller page)", async () => {
+  const search = doc("fk-search.html");
+  const product = doc("fk-product-fbf.html");
+  const calls: string[] = [];
+  const origFetch = win.fetch;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (win as any).fetch = async (url: string) => {
+    calls.push(url);
+    const d = /\/p\/itm/.test(url) ? product : search;
+    return { ok: true, status: 200, url, text: async () => d.documentElement.outerHTML };
+  };
+  try {
+    const opts = { site: F, minDelay: 0, maxDelay: 0, sellerPages: true, shouldStop: () => false };
+    const stale = html("<p>old page</p>");
+    const rows = await S.quickScan({ doc: stale, location: { href: "https://www.flipkart.com/search?q=desi+ghee&page=2" }, pages: 2, opts, onRows: () => {} });
+    assert.equal(calls[0], "https://www.flipkart.com/search?q=desi+ghee&page=2", "the page on screen is fetched, not read");
+    assert.equal(calls[1], "https://www.flipkart.com/search?q=desi+ghee&page=3");
+    assert.equal(rows.length, 12);
+    calls.length = 0;
+    const one = rows.slice(0, 2);
+    await S.deepScan({ rows: one, opts, onUpdate: () => {} });
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every((u) => /\/p\/itm/.test(u)), "product pages only");
+    assert.equal(one[0].buyboxSeller, "MYTHANGLORYRetail");
+    assert.equal(one[0].rating, 4.2, "search-card rating kept");
+  } finally {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (win as any).fetch = origFetch;
+  }
 });

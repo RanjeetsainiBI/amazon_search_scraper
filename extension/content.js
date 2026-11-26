@@ -1,6 +1,6 @@
 /**
- * Entry point on amazon.in pages: a small launcher button on search,
- * storefront and product pages, and the toolbar icon toggles the panel.
+ * Entry point on amazon.in and flipkart.com pages: a small launcher button on
+ * search, storefront and product pages, and the toolbar icon toggles the panel.
  */
 (function () {
   "use strict";
@@ -11,7 +11,8 @@
     if (msg && msg.type === "ax-toggle") AxPanel.toggle();
   });
 
-  const kind = AxParse.pageKind(location);
+  const site = window.AxFk && AxFk.isHere(location) ? AxFk : AxParse;
+  const kind = site.pageKind(location);
   if (kind === "other" || window.top !== window) return;
   const btn = document.createElement("div");
   btn.id = "ax-xray-launcher";

@@ -8,6 +8,7 @@
   let kind = "other";
   try {
     if (tab && /^https:\/\/www\.amazon\.in\//.test(tab.url || "")) kind = AxParse.pageKind(new URL(tab.url));
+    else if (tab && /^https:\/\/www\.flipkart\.com\//.test(tab.url || "")) kind = AxFk.pageKind(new URL(tab.url));
   } catch (e) {}
   const scannable = kind === "search" || kind === "storefront" || kind === "product";
   const asin = tab && tab.url ? AxParse.asinFromUrl(tab.url) : null;
@@ -28,7 +29,7 @@
       await chrome.tabs.sendMessage(tab.id, { type: "ax-toggle" });
     } catch (e) {
       // Tab was open before the extension was installed: load the scripts first.
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["parse.js", "scan.js", "panel.js", "content.js"] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["parse.js", "flipkart.js", "scan.js", "panel.js", "content.js"] });
       await chrome.tabs.sendMessage(tab.id, { type: "ax-toggle" });
     }
     window.close();

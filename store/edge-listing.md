@@ -29,7 +29,7 @@ Scan amazon.in search pages, storefronts and products: organic & sponsored rank,
 **Description:**
 
 ```
-AdLytics Xray turns any amazon.in search results page, seller storefront or product page into a sortable research table, in one click. Click the toolbar icon for three tools: Download Result, Rank Track and Product Track.
+AdLytics Xray turns any amazon.in or flipkart.com search results page, seller storefront or product page into a sortable research table, in one click. Click the toolbar icon for three tools: Download Result, Rank Track and Product Track.
 
 ⚡ QUICK SCAN: instant
 • Page, position, organic rank and sponsored (SP) rank, counted across up to 10 result pages
